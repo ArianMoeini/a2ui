@@ -81,6 +81,10 @@ const EXTRA_V09_EXAMPLES = [
     filePath: '../../../catalogs/iframe/examples/srcdoc-tip-calculator.json',
     catalog: 'iframe',
   },
+  {
+    filePath: '../../../catalogs/iframe/examples/url-order-tracker.json',
+    catalog: 'iframe',
+  },
 ];
 
 function readExampleFile(filePath, catalog, version) {
