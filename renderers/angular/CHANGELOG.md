@@ -1,5 +1,6 @@
 ## Unreleased
 
+- (v1_0) `ComponentHostComponent` renders components on a surface whose `createSurface` names no default catalog by resolving each against its own catalog. `SurfaceModel.defaultCatalog` (and the deprecated `catalog` getter) from `@a2ui/web_core` may now be `undefined`, so code that reads `surface.defaultCatalog` must handle that case.
 - Migrate package root `@a2ui/angular` to export version-agnostic core services (`A2uiRendererService`, `SurfaceComponent`, `ComponentHostComponent`, etc.) and the v1.0 `BasicCatalog`.
   - **BREAKING CHANGE**: The package root no longer re-exports the v0.8 API (`export * from './v0_8/public-api'`) or the `A2UI_ANGULAR_VERSION` constant. v0.8 consumers must import from `@a2ui/angular/v0_8`.
 - Maintain `@a2ui/angular/v0_9` and `@a2ui/angular/v0_8` secondary entry points for version-specific components and catalogs.
