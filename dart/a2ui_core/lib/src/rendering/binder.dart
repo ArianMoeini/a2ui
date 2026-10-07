@@ -95,7 +95,9 @@ class GenericBinder {
   GenericBinder(this.context, this.schema) {
     _schemaReader = ReferenceSchemaReader(
       schema.value,
-      document: context.surface.catalog.catalogSchema,
+      document: context.surface
+          .catalogForComponent(context.componentModel)
+          .catalogSchema,
     );
     _behaviorTree = _scrapeSchemaBehavior(schema.value);
     _resolvedProps = signal<Map<String, dynamic>>({});
@@ -176,18 +178,18 @@ class GenericBinder {
 
     switch (behavior.type) {
       case Behavior.dynamic:
-        final bool isV10 = context.dataContext.isV10;
+        final bool atLeastV10 = context.dataContext.atLeastV10;
         final ReadonlySignal<Object?> sig =
             context.dataContext.resolveListenable(value);
         // When the protocol's binding key is present (without `componentId` in
         // pre-v1.0), cast its value to `String` so a malformed non-string path
         // (such as `{'path': 42}`) throws `TypeError` during materialization.
         final String? boundPath = value is Map &&
-                (isV10
+                (atLeastV10
                     ? value.containsKey('@path')
                     : (value.containsKey('path') &&
                         !value.containsKey('componentId')))
-            ? (value[isV10 ? '@path' : 'path'] as String)
+            ? (value[atLeastV10 ? '@path' : 'path'] as String)
             : null;
         ResolvedBinding<Object?> wrap(Object? current) {
           final Object? snapshot = _snapshotBindingValue(current);
@@ -534,11 +536,11 @@ class GenericBinder {
     );
     if (hasEvent || hasFunctionCall) return BehaviorNode(Behavior.action);
 
-    final bool isV10 = context.dataContext.isV10;
+    final bool atLeastV10 = context.dataContext.atLeastV10;
     bool hasPath = schemasToInspect.any(
       (s) =>
           s['properties'] != null &&
-          (isV10
+          (atLeastV10
               ? (s['properties'] as Map)['@path'] != null
               : (s['properties'] as Map)['path'] != null) &&
           (s['properties'] as Map)['componentId'] == null,

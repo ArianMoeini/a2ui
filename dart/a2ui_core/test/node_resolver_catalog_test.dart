@@ -235,7 +235,7 @@ void main() {
       id: parsed.id,
       components: parsed.components.values.toList(),
     );
-    final surface = SurfaceModel<ComponentApi>('s', catalog: catalog);
+    final surface = SurfaceModel<ComponentApi>('s', defaultCatalog: catalog);
     final resolver = NodeResolver<ComponentApi>(surface);
     addTearDown(() {
       resolver.dispose();
@@ -243,12 +243,16 @@ void main() {
     });
     surface.dataModel.set('/', values);
     surface.componentsModel.addComponent(
-      ComponentModel('root', 'Values', {
-        for (final MapEntry<String, Object?> entry in values.entries) ...{
-          '${entry.key}Literal': entry.value,
-          '${entry.key}Bound': {'path': '/${entry.key}'},
-        },
-      }),
+      ComponentModel(
+          'root',
+          'Values',
+          {
+            for (final MapEntry<String, Object?> entry in values.entries) ...{
+              '${entry.key}Literal': entry.value,
+              '${entry.key}Bound': {'path': '/${entry.key}'},
+            },
+          },
+          catalog: surface.defaultCatalog!),
     );
     final NodeProps props = resolver.rootNode.peek()!.props.peek();
     for (final MapEntry<String, Object?> entry in values.entries) {

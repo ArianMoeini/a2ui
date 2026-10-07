@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:a2ui_core/src/core/component_model.dart';
-import 'package:a2ui_core/src/core/minimal_catalog.dart';
-import 'package:a2ui_core/src/primitives/errors.dart';
-import 'package:a2ui_core/src/validation/validation_config.dart';
+import 'package:a2ui_core/a2ui_core.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('ComponentModel', () {
     test('onUpdated fires on every property update, not just the first', () {
-      final comp = ComponentModel('c1', 'Text', {'text': 'hello'});
+      final comp = ComponentModel(
+        'c1',
+        'Text',
+        {'text': 'hello'},
+        catalog: MinimalCatalog(),
+      );
       var updateCount = 0;
       comp.onUpdated.addListener((_) => updateCount++);
 
@@ -36,36 +38,47 @@ void main() {
     });
 
     test('toJson keeps its id and type over same-named properties', () {
-      final comp = ComponentModel('c1', 'Text', {
-        'text': 'hi',
-        'id': 'other',
-        'component': 'Bogus',
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': 'hi',
+            'id': 'other',
+            'component': 'Bogus',
+          },
+          catalog: MinimalCatalog());
 
       expect(comp.toJson(), {'text': 'hi', 'id': 'c1', 'component': 'Text'});
     });
 
-    test('toJson emits catalogId and metadata only when set', () {
-      expect(ComponentModel('c1', 'Text', {'text': 'a'}).toJson(), {
-        'id': 'c1',
-        'component': 'Text',
-        'text': 'a',
-      });
+    test('holds its catalog without adding a catalogId to toJson', () {
+      final catalog = MinimalCatalog();
+      final comp =
+          ComponentModel('c1', 'Text', {'text': 'hi'}, catalog: catalog);
 
+      expect(comp.catalog, same(catalog));
+      expect(comp.catalogId, isNull);
+      expect(comp.toJson(), {'text': 'hi', 'id': 'c1', 'component': 'Text'});
+    });
+
+    test('toJson emits catalogId and metadata only when set', () {
+      final catalog = MinimalCatalog();
       final comp = ComponentModel(
         'c1',
         'Text',
         {'text': 'a'},
-        catalog: 'cat',
+        catalog: catalog,
+        catalogId: catalog.id,
         metadata: {'k': 'v'},
       );
-      expect(comp.catalog, 'cat');
+      expect(comp.catalog, same(catalog));
+      expect(comp.catalogId, catalog.id);
       expect(comp.metadata, {'k': 'v'});
       expect(comp.properties, {'text': 'a'});
       expect(comp.toJson(), {
         'id': 'c1',
         'component': 'Text',
-        'catalogId': 'cat',
+        'catalogId': catalog.id,
         'metadata': {'k': 'v'},
         'text': 'a',
       });
@@ -73,16 +86,25 @@ void main() {
   });
 
   group('SurfaceComponentsModel', () {
+    late MinimalCatalog catalog;
     late SurfaceComponentsModel model;
 
     setUp(() {
-      model = SurfaceComponentsModel(catalog: MinimalCatalog());
+      catalog = MinimalCatalog();
+      model = SurfaceComponentsModel(catalog: catalog);
       model.addComponent(
-        ComponentModel('root', 'Column', {
-          'children': ['a', 'b'],
-        }),
+        ComponentModel(
+          'root',
+          'Column',
+          {
+            'children': ['a', 'b'],
+          },
+          catalog: catalog,
+        ),
       );
-      model.addComponent(ComponentModel('a', 'Text', {'text': 'x'}));
+      model.addComponent(
+        ComponentModel('a', 'Text', {'text': 'x'}, catalog: catalog),
+      );
     });
 
     tearDown(() => model.dispose());
@@ -101,6 +123,24 @@ void main() {
       expect(model.getChildIds('root'), ['a', 'b']);
       expect(model.getChildIds('a'), isEmpty);
       expect(model.getChildIds('missing'), isEmpty);
+    });
+
+    test('reads references through each component\'s own catalog', () {
+      // No default catalog: the model still finds the references, because
+      // they come from the catalog each component resolved to.
+      final noDefault = SurfaceComponentsModel();
+      addTearDown(noDefault.dispose);
+      noDefault.addComponent(
+        ComponentModel(
+          'root',
+          'Column',
+          {
+            'children': ['a'],
+          },
+          catalog: catalog,
+        ),
+      );
+      expect(noDefault.getChildIds('root'), ['a']);
     });
 
     test('validateTopology applies the config flags', () {

@@ -131,21 +131,25 @@ void main() {
         );
         final surface = SurfaceModel<ComponentApi>(
           's-json',
-          catalog: rendererCatalog,
+          defaultCatalog: rendererCatalog,
         );
         addTearDown(surface.dispose);
 
         surface.dataModel.set('/isValidEmail', false);
-        final model = ComponentModel('tf1', 'TextField', {
-          'label': 'Email',
-          'value': 'invalid@',
-          'checks': [
+        final model = ComponentModel(
+            'tf1',
+            'TextField',
             {
-              'condition': {'path': '/isValidEmail'},
-              'message': 'Enter a valid email address',
+              'label': 'Email',
+              'value': 'invalid@',
+              'checks': [
+                {
+                  'condition': {'path': '/isValidEmail'},
+                  'message': 'Enter a valid email address',
+                },
+              ],
             },
-          ],
-        });
+            catalog: surface.defaultCatalog!);
         surface.componentsModel.addComponent(model);
 
         final binder = GenericBinder(

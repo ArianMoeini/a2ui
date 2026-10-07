@@ -21,10 +21,11 @@ void main() {
     late FormatStringFunction formatString;
 
     Object? invokeFunction(
-      String name,
+      FunctionCall call,
       Map<String, dynamic> args,
       DataContext context,
     ) {
+      final String name = call.call;
       if (name == 'formatString') {
         return formatString.execute(args, context);
       }

@@ -27,8 +27,8 @@ void main() {
     errors = [];
     context = DataContext(
       dataModel,
-      (name, args, context) {
-        expect(name, 'join');
+      (call, args, context) {
+        expect(call.call, 'join');
         return (args['values'] as List).join('');
       },
       '/',
@@ -110,9 +110,9 @@ void main() {
       final invocationPaths = <String>[];
       context = DataContext(
         dataModel,
-        (name, args, currentContext) {
+        (call, args, currentContext) {
           invocationPaths.add(currentContext.path);
-          if (name == 'fail') throw failure;
+          if (call.call == 'fail') throw failure;
           return currentContext.resolveSync(args['value']);
         },
         '/users',
@@ -160,7 +160,7 @@ void main() {
             '${original.runtimeType}', () {
           context = DataContext(
             dataModel,
-            (name, args, context) => throw original,
+            (call, args, context) => throw original,
             '/',
           );
 
@@ -188,7 +188,7 @@ void main() {
         );
         context = DataContext(
           dataModel,
-          (name, args, context) => throw original,
+          (call, args, context) => throw original,
           '/',
           onError: errors.add,
         );
@@ -201,7 +201,7 @@ void main() {
         final original = StateError('failed');
         context = DataContext(
           dataModel,
-          (name, args, context) => throw original,
+          (call, args, context) => throw original,
           '/',
           onError: errors.add,
         );
@@ -220,11 +220,95 @@ void main() {
     late List<A2uiClientError> clientErrors;
 
     setUp(() {
-      surface = SurfaceModel('surf-1', catalog: MinimalCatalog());
-      component = ComponentModel('root', 'Text', {});
+      surface = SurfaceModel('surf-1', defaultCatalog: MinimalCatalog());
+      component =
+          ComponentModel('root', 'Text', {}, catalog: surface.defaultCatalog!);
       clientErrors = [];
       surface.onError.addListener(clientErrors.add);
       addTearDown(surface.dispose);
+    });
+
+    group('from v1.0', () {
+      late List<A2uiClientError> v1Errors;
+
+      SurfaceModel<ComponentApi> v1Surface({bool withDefault = true}) {
+        final catalog = MinimalCatalog();
+        final s = SurfaceModel<ComponentApi>(
+          'surf-v1',
+          defaultCatalog: withDefault ? catalog : null,
+          availableCatalogs: [catalog],
+          protocolVersion: 'v1.0',
+        );
+        v1Errors = [];
+        s.onError.addListener(v1Errors.add);
+        addTearDown(s.dispose);
+        return s;
+      }
+
+      Object? resolve(SurfaceModel<ComponentApi> s, Object? value) {
+        final root = ComponentModel(
+          'root',
+          'Text',
+          {},
+          catalog: s.availableCatalogs.values.single,
+        );
+        return ComponentContext(s, root).dataContext.resolveSync(value);
+      }
+
+      test('dispatches CATALOG_ERROR for a call naming an unknown catalog', () {
+        final SurfaceModel<ComponentApi> s = v1Surface();
+
+        expect(
+          resolve(s, {
+            '@call': 'capitalize',
+            'catalogId': 'https://example.com/missing.json',
+            'args': <String, Object?>{},
+          }),
+          isNull,
+        );
+        expect(v1Errors, hasLength(1));
+        expect(v1Errors.single.code, 'CATALOG_ERROR');
+        expect(v1Errors.single.message, contains('Catalog not found'));
+      });
+
+      test(
+          'dispatches CATALOG_ERROR for a call naming no catalog on a surface '
+          'without a default', () {
+        final SurfaceModel<ComponentApi> s = v1Surface(withDefault: false);
+
+        expect(
+          resolve(s, {'@call': 'capitalize', 'args': <String, Object?>{}}),
+          isNull,
+        );
+        expect(v1Errors, hasLength(1));
+        expect(v1Errors.single.code, 'CATALOG_ERROR');
+        expect(v1Errors.single.message, contains('no default catalogId'));
+      });
+
+      test(
+          'dispatches EXPRESSION_ERROR for a function missing from the '
+          'resolved catalog', () {
+        final SurfaceModel<ComponentApi> s = v1Surface();
+
+        expect(
+          resolve(s, {'@call': 'missing', 'args': <String, Object?>{}}),
+          isNull,
+        );
+        expect(v1Errors, hasLength(1));
+        expect(v1Errors.single.code, 'EXPRESSION_ERROR');
+        expect(v1Errors.single.message, contains('Function not found'));
+      });
+
+      test('dispatches EXPRESSION_ERROR for an unknown system function', () {
+        final SurfaceModel<ComponentApi> s = v1Surface(withDefault: false);
+
+        expect(
+          resolve(s, {'@call': '@missing', 'args': <String, Object?>{}}),
+          isNull,
+        );
+        expect(v1Errors, hasLength(1));
+        expect(v1Errors.single.code, 'EXPRESSION_ERROR');
+      });
     });
 
     test('dispatches an expression error immediately by default', () {
@@ -250,7 +334,7 @@ void main() {
           onError: errors.add,
         );
         surface.componentsModel.addComponent(
-          ComponentModel('child', 'Text', {}),
+          ComponentModel('child', 'Text', {}, catalog: surface.defaultCatalog!),
         );
         final ComponentContext child = componentContext.childContext('child');
 
@@ -277,11 +361,11 @@ void main() {
     });
 
     Object? mockInvoker(
-      String name,
+      FunctionCall call,
       Map<String, dynamic> args,
       DataContext context,
     ) {
-      if (name == 'uppercase') {
+      if (call.call == 'uppercase') {
         return (args['value'] as String).toUpperCase();
       }
       return null;
@@ -402,14 +486,14 @@ void main() {
       );
     });
 
-    test('isV10 matches versions >= 1.0 semantically', () {
+    test('atLeastV10 matches versions >= 1.0 semantically', () {
       final ctx1 = DataContext(
         dataModel,
         mockInvoker,
         '/',
         protocolVersion: 'v1.1',
       );
-      expect(ctx1.isV10, isTrue);
+      expect(ctx1.atLeastV10, isTrue);
 
       final ctx2 = DataContext(
         dataModel,
@@ -417,7 +501,7 @@ void main() {
         '/',
         protocolVersion: '2.0.0',
       );
-      expect(ctx2.isV10, isTrue);
+      expect(ctx2.atLeastV10, isTrue);
 
       final ctx3 = DataContext(
         dataModel,
@@ -425,7 +509,7 @@ void main() {
         '/',
         protocolVersion: 'v0.9.1',
       );
-      expect(ctx3.isV10, isFalse);
+      expect(ctx3.atLeastV10, isFalse);
     });
 
     test('bindingFor returns version-appropriate binding map', () {
@@ -570,7 +654,7 @@ void main() {
           countingModel.watchCounts.clear();
           final ctx = DataContext(
             countingModel,
-            (name, args, _) => '${args['first']}-${args['second']}',
+            (call, args, _) => '${args['first']}-${args['second']}',
             '/',
             protocolVersion: version,
           );
@@ -714,10 +798,12 @@ void main() {
     late ComponentModel component;
 
     setUp(() {
-      surface = SurfaceModel('surf-err', catalog: MinimalCatalog());
-      component = ComponentModel('root', 'Column', {});
+      surface = SurfaceModel('surf-err', defaultCatalog: MinimalCatalog());
+      component = ComponentModel('root', 'Column', {},
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(component);
-      surface.componentsModel.addComponent(ComponentModel('child', 'Text', {}));
+      surface.componentsModel.addComponent(ComponentModel('child', 'Text', {},
+          catalog: surface.defaultCatalog!));
       addTearDown(surface.dispose);
     });
 
@@ -744,21 +830,22 @@ void main() {
     });
 
     test(
-        'CatalogInvokerExtension.invoke throws A2uiCatalogError on unknown '
+        'CatalogInvokerExtension.invoke throws A2uiExpressionError on unknown '
         'function', () {
       final componentContext = ComponentContext(surface, component);
+      final Catalog<ComponentApi, FunctionImplementation> catalog =
+          surface.defaultCatalog!;
       expect(
-        () => surface.catalog.invoke(
+        () => catalog.invoke(
           'unknownFn',
-          const {},
+          const <String, dynamic>{},
           componentContext.dataContext,
         ),
         throwsA(
-          isA<A2uiCatalogError>().having(
-            (e) => e.catalogId,
-            'catalogId',
-            surface.catalog.id,
-          ),
+          isA<A2uiExpressionError>()
+              .having((e) => e.code, 'code', 'EXPRESSION_ERROR')
+              .having((e) => e.expression, 'expression', 'unknownFn')
+              .having((e) => e.message, 'message', contains(catalog.id)),
         ),
       );
     });

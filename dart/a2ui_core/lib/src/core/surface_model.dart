@@ -14,16 +14,30 @@
 
 import 'dart:async';
 
+import '../primitives/errors.dart';
 import '../primitives/event_notifier.dart';
 import 'catalog.dart';
+import 'common.dart';
 import 'component_model.dart';
+import 'contexts.dart';
 import 'data_model.dart';
 import 'messages.dart';
 
 /// The state model for a single UI surface.
 class SurfaceModel<T extends ComponentApi> {
   final String id;
-  final Catalog<T, FunctionImplementation> catalog;
+
+  /// The surface's default catalog, from the `catalogId` on `createSurface`.
+  ///
+  /// Null when the surface names none, which v1.0 allows: every component
+  /// and function call on such a surface names its own catalog, and one that
+  /// names none fails to resolve. See [resolveCatalog].
+  final Catalog<T, FunctionImplementation>? defaultCatalog;
+
+  /// The catalogs a component or function call on this surface may name by
+  /// `catalogId`, keyed by id. Includes [defaultCatalog] when there is one.
+  final Map<String, Catalog<T, FunctionImplementation>> availableCatalogs;
+
   final Map<String, dynamic> theme;
   final bool sendDataModel;
   final String? protocolVersion;
@@ -46,15 +60,91 @@ class SurfaceModel<T extends ComponentApi> {
   /// Fires whenever an error occurs on this surface.
   EventListenable<A2uiClientError> get onError => _onError;
 
+  /// Creates a surface with [defaultCatalog], which is null for a v1.0
+  /// surface that names none.
+  ///
+  /// [availableCatalogs] are the further catalogs its components and function
+  /// calls may name by `catalogId`; [defaultCatalog] is added to them.
   SurfaceModel(
     this.id, {
-    required this.catalog,
+    required this.defaultCatalog,
+    Iterable<Catalog<T, FunctionImplementation>> availableCatalogs = const [],
     this.theme = const {},
     this.sendDataModel = false,
     this.protocolVersion,
     this.rootId = 'root',
-  })  : dataModel = DataModel(),
-        componentsModel = SurfaceComponentsModel(catalog: catalog);
+  })  : availableCatalogs =
+            Map.unmodifiable(<String, Catalog<T, FunctionImplementation>>{
+          for (final Catalog<T, FunctionImplementation> c in availableCatalogs)
+            c.id: c,
+          if (defaultCatalog != null) defaultCatalog.id: defaultCatalog,
+        }),
+        dataModel = DataModel(),
+        componentsModel = SurfaceComponentsModel(catalog: defaultCatalog);
+
+  /// The catalog an item on this surface resolves to.
+  ///
+  /// A v1.0 component or function call uses the catalog its [catalogId]
+  /// names, or else the surface's [defaultCatalog]. [subject] names the item
+  /// in the error, such as `"Component 'root'"`.
+  ///
+  /// Throws [A2uiCatalogError] when [catalogId] names a catalog this surface
+  /// does not have, or when it is null and the surface has no default.
+  Catalog<T, FunctionImplementation> resolveCatalog(
+    String? catalogId, {
+    String subject = 'Item',
+  }) {
+    if (catalogId != null) {
+      return availableCatalogs[catalogId] ??
+          (throw A2uiCatalogError(
+            'Catalog not found: $catalogId. $subject names a catalog surface '
+            "'$id' does not have. "
+            "Available: ${availableCatalogs.keys.join(', ')}.",
+            catalogId: catalogId,
+          ));
+    }
+    return defaultCatalog ??
+        (throw A2uiCatalogError(
+          "$subject names no catalogId and surface '$id' has no default "
+          'catalogId.',
+        ));
+  }
+
+  /// The catalog [component] resolved to, its [ComponentModel.catalog], typed
+  /// for this surface.
+  ///
+  /// The catalog was resolved when the component arrived (see
+  /// [resolveCatalog]), so it is not re-derived from the component's
+  /// properties here. Throws [A2uiCatalogError] when that catalog does not
+  /// hold components of type [T], which only a component built outside
+  /// `MessageProcessor` can cause.
+  Catalog<T, FunctionImplementation> catalogForComponent(
+    ComponentModel component,
+  ) {
+    final Catalog<ComponentApi, FunctionImplementation> catalog =
+        component.catalog;
+    if (catalog is Catalog<T, FunctionImplementation>) return catalog;
+    throw A2uiCatalogError(
+      "Component '${component.id}' is in catalog '${catalog.id}', whose "
+      "components are not $T as surface '$id' requires.",
+      catalogId: catalog.id,
+    );
+  }
+
+  /// Invokes [call] in the catalog its [FunctionCall.catalogId] resolves to;
+  /// see [resolveCatalog]. Matches [FunctionInvoker], so it can be passed to
+  /// a [DataContext] as is.
+  ///
+  /// Throws [A2uiCatalogError] when the call resolves to no catalog, and
+  /// [A2uiExpressionError] when the catalog it resolves to has no such
+  /// function.
+  Object? invokeFunction(
+    FunctionCall call,
+    Map<String, dynamic> args,
+    DataContext context,
+  ) =>
+      resolveCatalog(call.catalogId, subject: "Function call '${call.call}'")
+          .invoke(call.call, args, context);
 
   /// Emits an agent-bound action from this surface on [onAction].
   ///

@@ -161,7 +161,7 @@ class _Runner {
           _RecordingFunction(api, functions),
       ],
     );
-    surface = SurfaceModel('s', catalog: catalog);
+    surface = SurfaceModel('s', defaultCatalog: catalog);
     surface.dataModel.set('/', _copy(fixture['data']));
     updateComponents(fixture['components']! as List<Object?>);
     surface.onAction.addListener((event) {
@@ -249,7 +249,8 @@ class _Runner {
       final ComponentModel? existing = surface.componentsModel.get(id);
       if (existing == null) {
         surface.componentsModel.addComponent(
-          ComponentModel(id, type, properties),
+          ComponentModel(id, type, properties,
+              catalog: surface.defaultCatalog!),
         );
       } else {
         expect(

@@ -230,7 +230,7 @@ class NodeResolver<T extends ComponentApi> {
     _pendingErrors.add(
       _QueuedError(
         A2uiClientError(
-          code: 'EXPRESSION_ERROR',
+          code: error.code,
           surfaceId: _surface.id,
           message: error.message,
           details: error.details,
@@ -401,6 +401,19 @@ class NodeResolver<T extends ComponentApi> {
     }
   }
 
+  /// The catalog [model] resolved to, its `ComponentModel.catalog`, with null
+  /// and the reason when that catalog does not hold components of type [T];
+  /// see `SurfaceModel.catalogForComponent`.
+  (Catalog<T, FunctionImplementation>?, String?) _catalogOf(
+    ComponentModel model,
+  ) {
+    try {
+      return (_surface.catalogForComponent(model), null);
+    } on A2uiCatalogError catch (e) {
+      return (null, e.message);
+    }
+  }
+
   /// Creates a node for one (componentId, dataPath) edge. A missing
   /// component definition yields a placeholder node and registers the parent
   /// for a refresh when the definition arrives.
@@ -432,14 +445,19 @@ class NodeResolver<T extends ComponentApi> {
       return record.node;
     }
 
-    final T? api = _surface.catalog.components[model.type];
+    final (Catalog<T, FunctionImplementation>?, String?) resolved =
+        _catalogOf(model);
+    final Catalog<T, FunctionImplementation>? catalog = resolved.$1;
+    final T? api = catalog?.components[model.type];
     if (api == null) {
       _reportOnce(
         'UNKNOWN_COMPONENT_TYPE',
         componentId,
         dataPath,
-        "Component '$componentId' has type '${model.type}', which is "
-            "not in catalog '${_surface.catalog.id}'.",
+        catalog == null
+            ? resolved.$2!
+            : "Component '$componentId' has type '${model.type}', which is "
+                "not in catalog '${catalog.id}'.",
       );
       return _registerNode(
         _placeholderNode(
@@ -471,7 +489,7 @@ class NodeResolver<T extends ComponentApi> {
       edgeKey: edgeKey,
       parent: parent,
       occurrence: occurrence,
-      refFields: _surface.catalog.refMap.fieldsFor(model.type),
+      refFields: catalog!.refMap.fieldsFor(model.type),
       componentModel: model,
     );
     final GenericBinder binder;
@@ -603,7 +621,7 @@ class NodeResolver<T extends ComponentApi> {
     if (existing != null && !existing.disposed) {
       final ComponentModel? model = _surface.componentsModel.get(componentId);
       final T? api =
-          model == null ? null : _surface.catalog.components[model.type];
+          model == null ? null : _catalogOf(model).$1?.components[model.type];
       // A placeholder stays up to date only while its own state's
       // preconditions hold, so a pending node whose definition arrives with
       // an unknown type is replaced (once) by an unknown-type node, and

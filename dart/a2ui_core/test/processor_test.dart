@@ -734,7 +734,7 @@ void main() {
     test('NodeResolver roots the tree at the surface rootId', () {
       final surface = SurfaceModel<ComponentApi>(
         's1',
-        catalog: catalog,
+        defaultCatalog: catalog,
         rootId: 'main',
       );
       final resolver = NodeResolver<ComponentApi>(surface);
@@ -744,12 +744,17 @@ void main() {
       });
 
       surface.componentsModel.addComponent(
-        ComponentModel('root', 'Text', {'text': 'not the root'}),
+        ComponentModel(
+          'root',
+          'Text',
+          {'text': 'not the root'},
+          catalog: catalog,
+        ),
       );
       expect(resolver.rootNode.value, isNull);
 
       surface.componentsModel.addComponent(
-        ComponentModel('main', 'Text', {'text': 'hi'}),
+        ComponentModel('main', 'Text', {'text': 'hi'}, catalog: catalog),
       );
       expect(resolver.rootNode.value?.componentId, 'main');
     });
@@ -812,7 +817,8 @@ void main() {
 
       final ComponentModel root = components().get('root')!;
       expect(root.properties, {'a': 'x'});
-      expect(root.catalog, 'cat2');
+      expect(root.catalog.id, 'cat2');
+      expect(root.catalogId, 'cat2');
       expect(root.metadata, {'k': 'v'});
       expect(root.toJson(), {
         'id': 'root',
@@ -836,13 +842,35 @@ void main() {
         'catalogId': 'cat2',
       });
       expect(events, ['deleted:root', 'created:root']);
-      expect(components().get('root')!.catalog, 'cat2');
+      expect(components().get('root')!.catalog.id, 'cat2');
 
       // A partial update inherits the catalog rather than changing it.
       update({'id': 'root', 'a': 'z'});
       expect(events, ['deleted:root', 'created:root']);
-      expect(components().get('root')!.catalog, 'cat2');
+      expect(components().get('root')!.catalog.id, 'cat2');
+      expect(components().get('root')!.catalogId, 'cat2');
       expect(components().get('root')!.properties, {'a': 'z'});
+    });
+
+    test('naming the default catalog explicitly updates in place', () {
+      update({'id': 'root', 'component': 'Alpha', 'a': 'x'});
+      final ComponentModel root = components().get('root')!;
+      final events = <String>[];
+      components().onDeleted.addListener((id) => events.add('deleted:$id'));
+      components().onCreated.addListener((c) => events.add('created:${c.id}'));
+
+      // Resolves to the same catalog, so only the catalogId it names changes.
+      update(
+          {'id': 'root', 'component': 'Alpha', 'a': 'y', 'catalogId': 'cat1'});
+      expect(events, isEmpty);
+      expect(components().get('root'), same(root));
+      expect(root.catalogId, 'cat1');
+      expect(root.toJson()['catalogId'], 'cat1');
+
+      update({'id': 'root', 'component': 'Alpha', 'a': 'z'});
+      expect(events, isEmpty);
+      expect(root.catalogId, isNull);
+      expect(root.toJson().containsKey('catalogId'), isFalse);
     });
   });
 }

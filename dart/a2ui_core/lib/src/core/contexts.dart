@@ -21,14 +21,22 @@ import 'data_model.dart';
 import 'messages.dart';
 import 'surface_model.dart';
 
-/// A function that invokes a catalog function by name.
+/// Invokes the catalog function that [call] names, with its resolved [args].
+///
+/// The invoker receives the whole [call], so it can read the catalog the
+/// call names through [FunctionCall.catalogId], which is null when the call
+/// names none. A surface's invoker runs the call in that catalog, or else in
+/// the surface's default catalog, and throws when it resolves to no catalog.
 typedef FunctionInvoker = Object? Function(
-  String name,
+  FunctionCall call,
   Map<String, dynamic> args,
   DataContext context,
 );
 
 /// Reports a failed function evaluation without depending on a surface.
+///
+/// The error's [A2uiError.code] is `CATALOG_ERROR` when the call's catalog
+/// could not be resolved, and `EXPRESSION_ERROR` for any other failure.
 typedef ExpressionErrorReporter = void Function(A2uiExpressionError error);
 
 /// Provides data access relative to a specific path in the DataModel.
@@ -46,6 +54,9 @@ class DataContext {
 
   /// With [onError], failed invocations are reported and resolve to null.
   /// Without it, the original exception is rethrown.
+  ///
+  /// Every function call runs through the invoker. Before v1.0 a call
+  /// carries no `catalogId`, so the invoker always sees a null one.
   DataContext(
     this.dataModel,
     this._invoke,
@@ -54,7 +65,8 @@ class DataContext {
     this.protocolVersion,
   }) : _onError = onError;
 
-  bool get isV10 {
+  /// Whether this context targets protocol v1.0 or any later version.
+  bool get atLeastV10 {
     final String? v = protocolVersion;
     if (v == null) return false;
     final String core = v.startsWith('v') ? v.substring(1) : v;
@@ -64,7 +76,7 @@ class DataContext {
   /// Returns a data-binding map for [path] using the key required by the
   /// active protocol version (`{'@path': path}` in v1.0+, `{'path': path}` in
   /// pre-v1.0).
-  Map<String, Object?> bindingFor(String path) => isV10
+  Map<String, Object?> bindingFor(String path) => atLeastV10
       ? <String, Object?>{'@path': path}
       : <String, Object?>{'path': path};
 
@@ -76,7 +88,7 @@ class DataContext {
   /// it a `ChildListTemplate` instead.
   bool isDataBinding(Object? value) {
     if (value is! Map) return false;
-    return isV10
+    return atLeastV10
         ? value['@path'] is String
         : value['path'] is String && !value.containsKey('componentId');
   }
@@ -88,7 +100,7 @@ class DataContext {
   /// is `{'call': '<name>', ...}`.
   bool isFunctionCall(Object? value) {
     if (value is! Map) return false;
-    return isV10 ? value['@call'] is String : value['call'] is String;
+    return atLeastV10 ? value['@call'] is String : value['call'] is String;
   }
 
   /// Rewrites [part], a node of a parsed `${...}` expression, into the
@@ -101,7 +113,7 @@ class DataContext {
   /// arguments rewritten recursively, and lists and other maps are rewritten
   /// element by element.
   Object? adaptExpressionPart(Object? part) {
-    if (!isV10) return part;
+    if (!atLeastV10) return part;
     if (part is List) {
       return [for (final Object? item in part) adaptExpressionPart(item)];
     }
@@ -184,7 +196,7 @@ class DataContext {
   /// be nested at any depth inside literal structure. A payload holding no
   /// bindings or calls is returned as-is rather than copied.
   Object? resolveSync(Object? value) {
-    if (isV10) {
+    if (atLeastV10) {
       if (value is Map && value.containsKey('@path')) {
         final binding = DataBinding.fromJson(_asStringKeyedMap(value));
         return dataModel.get(resolvePath(binding.path));
@@ -195,7 +207,7 @@ class DataContext {
         for (final MapEntry<String, dynamic> entry in call.args.entries) {
           args[entry.key] = resolveSync(entry.value);
         }
-        final Object? result = _evaluateFunction(call.call, args);
+        final Object? result = _evaluateFunction(call, args);
         if (result is ReadonlySignal) {
           return result.value;
         }
@@ -225,7 +237,7 @@ class DataContext {
         for (final MapEntry<String, dynamic> entry in call.args.entries) {
           args[entry.key] = resolveSync(entry.value);
         }
-        final Object? result = _evaluateFunction(call.call, args);
+        final Object? result = _evaluateFunction(call, args);
         if (result is ReadonlySignal) {
           return result.value;
         }
@@ -261,7 +273,8 @@ class DataContext {
       if (isDataBinding(value) || isFunctionCall(value)) {
         return true;
       }
-      if (isV10 && value.keys.any((k) => k is String && k.startsWith('@'))) {
+      if (atLeastV10 &&
+          value.keys.any((k) => k is String && k.startsWith('@'))) {
         return true;
       }
       return value.values.any(_containsDynamicValue);
@@ -273,7 +286,7 @@ class DataContext {
   /// whenever its underlying data dependencies change. Array and map
   /// payloads resolve per entry, mirroring [resolveSync].
   ReadonlySignal<Object?> resolveListenable(Object? value) {
-    if (isV10) {
+    if (atLeastV10) {
       if (value is Map && value.containsKey('@path')) {
         final binding = DataBinding.fromJson(_asStringKeyedMap(value));
         return dataModel.watch(resolvePath(binding.path));
@@ -290,7 +303,7 @@ class DataContext {
                 in argSignals.entries)
               entry.key: entry.value.value,
           };
-          final Object? result = _evaluateFunction(call.call, args);
+          final Object? result = _evaluateFunction(call, args);
           if (result is ReadonlySignal) {
             return result.value;
           }
@@ -329,7 +342,7 @@ class DataContext {
                 in argSignals.entries)
               entry.key: entry.value.value,
           };
-          final Object? result = _evaluateFunction(call.call, args);
+          final Object? result = _evaluateFunction(call, args);
           if (result is ReadonlySignal) {
             return result.value;
           }
@@ -366,19 +379,52 @@ class DataContext {
   }
 
   /// Invokes a function, reporting a failure only when a reporter was supplied.
-  Object? _evaluateFunction(String name, Map<String, dynamic> args) {
+  ///
+  /// From v1.0 a name in the reserved `@` namespace, such as `@index`, is a
+  /// system function that belongs to no catalog, so no catalog is consulted
+  /// for it. This SDK does not evaluate system functions yet, so such a call
+  /// fails with an [A2uiExpressionError]. A `catalogId` on the call is
+  /// honored only from v1.0; before it, every call runs in the default
+  /// catalog.
+  ///
+  /// The reported error carries code `CATALOG_ERROR` when the call's catalog
+  /// can't be resolved (the invoker threw [A2uiCatalogError]): the expression
+  /// may be fine, and the function may exist in a catalog the surface does
+  /// not have. Every other failure, including a function missing from the
+  /// catalog the call resolved to, carries `EXPRESSION_ERROR`.
+  Object? _evaluateFunction(FunctionCall call, Map<String, dynamic> args) {
+    final String name = call.call;
     try {
-      return _invoke(name, args, this);
+      if (atLeastV10 && name.startsWith('@')) {
+        throw A2uiExpressionError(
+          "System function '$name' is not supported by this renderer.",
+          expression: name,
+        );
+      }
+      final target = atLeastV10 || call.catalogId == null
+          ? call
+          : FunctionCall(
+              call: name,
+              args: call.args,
+              returnType: call.returnType,
+              reservedKeys: call.reservedKeys,
+            );
+      return _invoke(target, args, this);
     } catch (error) {
       final ExpressionErrorReporter? onError = _onError;
       if (onError == null) rethrow;
       onError(
-        error is A2uiExpressionError
-            ? error
-            : A2uiExpressionError(
-                error is A2uiError ? error.message : error.toString(),
-                expression: name,
-              ),
+        switch (error) {
+          A2uiExpressionError() => error,
+          A2uiCatalogError() => A2uiExpressionError(
+              error.message,
+              expression: name,
+              code: 'CATALOG_ERROR',
+              cause: error,
+            ),
+          A2uiError() => A2uiExpressionError(error.message, expression: name),
+          _ => A2uiExpressionError(error.toString(), expression: name),
+        },
       );
       return null;
     }
@@ -460,13 +506,13 @@ class ComponentContext {
     ExpressionErrorReporter? onError,
   }) : dataContext = DataContext(
           surface.dataModel,
-          surface.catalog.invoke,
+          surface.invokeFunction,
           basePath ?? '/',
           onError: onError ??
               (error) {
                 surface.dispatchError(
                   A2uiClientError(
-                    code: 'EXPRESSION_ERROR',
+                    code: error.code,
                     surfaceId: surface.id,
                     message: error.message,
                     details: error.details,
@@ -509,11 +555,16 @@ extension CatalogInvokerExtension
     on Catalog<ComponentApi, FunctionImplementation> {
   /// Invokes a catalog function by name with the given arguments.
   ///
-  /// Throws [A2uiCatalogError] if [name] is not registered in this catalog.
+  /// Throws [A2uiExpressionError] if [name] is not registered in this
+  /// catalog. The catalog itself resolved, so the failure is the call's, not
+  /// the catalog's, and is reported as `EXPRESSION_ERROR`.
   Object? invoke(String name, Map<String, dynamic> args, DataContext context) {
     final FunctionImplementation? fn = functions[name];
     if (fn == null) {
-      throw A2uiCatalogError('Function not found: $name', catalogId: id);
+      throw A2uiExpressionError(
+        "Function not found: $name in catalog '$id'.",
+        expression: name,
+      );
     }
     return fn.execute(args, context);
   }

@@ -25,7 +25,7 @@ void main() {
 
     test('removes action forwarder listener when surface is deleted', () {
       final group = SurfaceGroupModel<ComponentApi>();
-      final surface = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+      final surface = SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
       group.addSurface(surface);
 
       // Verify the forwarder works while surface is alive.
@@ -43,7 +43,8 @@ void main() {
 
       // Create a new surface with the same ID and verify the group
       // only forwards from the new one (not a leaked old listener).
-      final surface2 = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+      final surface2 =
+          SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
       group.addSurface(surface2);
 
       actionCount = 0;
@@ -59,7 +60,8 @@ void main() {
     test(
       'reports functionCall and call actions to onError',
       () async {
-        final surface = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+        final surface =
+            SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
         var actionCount = 0;
         final errors = <A2uiClientError>[];
         surface.onAction.addListener((_) => actionCount++);
@@ -83,7 +85,7 @@ void main() {
     );
 
     test('dispatches direct name action with userMessage', () {
-      final surface = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+      final surface = SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
       A2uiClientAction? dispatched;
       surface.onAction.addListener((action) => dispatched = action);
 
@@ -100,7 +102,7 @@ void main() {
     });
 
     test('safely normalizes non-map context and non-string userMessage', () {
-      final surface = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+      final surface = SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
       A2uiClientAction? dispatched;
       surface.onAction.addListener((action) => dispatched = action);
 
@@ -118,7 +120,7 @@ void main() {
 
     test('reports an event whose name is missing, empty, or not a string',
         () async {
-      final surface = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+      final surface = SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
       A2uiClientAction? dispatched;
       final errors = <A2uiClientError>[];
       surface.onAction.addListener((action) => dispatched = action);
@@ -140,7 +142,7 @@ void main() {
 
     test('dispatches action with UTC timestamp that serializes with trailing Z',
         () {
-      final surface = SurfaceModel<ComponentApi>('s1', catalog: catalog);
+      final surface = SurfaceModel<ComponentApi>('s1', defaultCatalog: catalog);
       A2uiClientAction? dispatched;
       surface.onAction.addListener((action) => dispatched = action);
 

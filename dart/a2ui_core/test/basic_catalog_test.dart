@@ -32,7 +32,7 @@ DataContext _contextFor(
 }) {
   return DataContext(
     dataModel ?? DataModel(),
-    (name, args, context) => catalog.invoke(name, args, context),
+    (call, args, context) => catalog.invoke(call.call, args, context),
     '/',
     protocolVersion: protocolVersion,
   );

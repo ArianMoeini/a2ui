@@ -25,11 +25,12 @@ void main() {
 
     setUp(() {
       catalog = MinimalCatalog();
-      surface = SurfaceModel('s1', catalog: catalog);
+      surface = SurfaceModel('s1', defaultCatalog: catalog);
     });
 
     test('rebuilds multiple dynamic properties in one coherent emission', () {
-      final comp = ComponentModel('pair', 'Pair', {'a': 'old', 'b': 'old'});
+      final comp = ComponentModel('pair', 'Pair', {'a': 'old', 'b': 'old'},
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
       final schema = Schema.object(
         properties: {
@@ -74,9 +75,13 @@ void main() {
           return wrapInList ? [item] : item;
         }
 
-        final comp = ComponentModel('c1', 'Container', {
-          'value': {'path': '/value'},
-        });
+        final comp = ComponentModel(
+            'c1',
+            'Container',
+            {
+              'value': {'path': '/value'},
+            },
+            catalog: surface.defaultCatalog!);
         surface.componentsModel.addComponent(comp);
         surface.dataModel.set('/value', expected('initial'));
         final schema = Schema.object(
@@ -130,9 +135,13 @@ void main() {
     }
 
     test('dispose stops reacting to data model changes', () {
-      final comp = ComponentModel('c1', 'Text', {
-        'text': {'path': '/val'},
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': {'path': '/val'},
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
       surface.dataModel.set('/val', 'initial');
 
@@ -167,13 +176,17 @@ void main() {
         );
         final trackingSurface = SurfaceModel<ComponentApi>(
           's',
-          catalog: trackingCatalog,
+          defaultCatalog: trackingCatalog,
         );
-        final comp = ComponentModel('pair', 'Pair', {
-          'a': 'old',
-          'b': 'old',
-          'c': 'old',
-        });
+        final comp = ComponentModel(
+            'pair',
+            'Pair',
+            {
+              'a': 'old',
+              'b': 'old',
+              'c': 'old',
+            },
+            catalog: trackingSurface.defaultCatalog!);
         trackingSurface.componentsModel.addComponent(comp);
         binder = GenericBinder(
           ComponentContext(trackingSurface, comp),
@@ -236,18 +249,22 @@ void main() {
       final trackingCatalog = _TrackingCatalog(onExecute: () => callCount++);
       final trackingSurface = SurfaceModel<ComponentApi>(
         's1',
-        catalog: trackingCatalog,
+        defaultCatalog: trackingCatalog,
       );
 
-      final comp = ComponentModel('c1', 'Text', {
-        'text': {
-          'call': 'trackingFn',
-          'args': {
-            'value': {'path': '/val'},
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': {
+              'call': 'trackingFn',
+              'args': {
+                'value': {'path': '/val'},
+              },
+              'returnType': 'any',
+            },
           },
-          'returnType': 'any',
-        },
-      });
+          catalog: trackingSurface.defaultCatalog!);
       trackingSurface.componentsModel.addComponent(comp);
       trackingSurface.dataModel.set('/val', 'a');
 
@@ -285,18 +302,22 @@ void main() {
       final trackingCatalog = _TrackingCatalog(onExecute: () => callCount++);
       final trackingSurface = SurfaceModel<ComponentApi>(
         's1',
-        catalog: trackingCatalog,
+        defaultCatalog: trackingCatalog,
       );
 
-      final comp = ComponentModel('c1', 'Text', {
-        'text': {
-          'call': 'trackingFn',
-          'args': {
-            'value': {'path': '/val'},
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': {
+              'call': 'trackingFn',
+              'args': {
+                'value': {'path': '/val'},
+              },
+              'returnType': 'any',
+            },
           },
-          'returnType': 'any',
-        },
-      });
+          catalog: trackingSurface.defaultCatalog!);
       trackingSurface.componentsModel.addComponent(comp);
       trackingSurface.dataModel.set('/val', 'hello');
 
@@ -322,24 +343,28 @@ void main() {
         );
         final trackingSurface = SurfaceModel<ComponentApi>(
           's1',
-          catalog: trackingCatalog,
+          defaultCatalog: trackingCatalog,
         );
 
-        final comp = ComponentModel('c1', 'TextField', {
-          'label': {'path': '/label'},
-          'checks': [
+        final comp = ComponentModel(
+            'c1',
+            'TextField',
             {
-              'condition': {
-                'call': 'trackingCheckFn',
-                'args': {
-                  'value': {'path': '/val'},
+              'label': {'path': '/label'},
+              'checks': [
+                {
+                  'condition': {
+                    'call': 'trackingCheckFn',
+                    'args': {
+                      'value': {'path': '/val'},
+                    },
+                    'returnType': 'boolean',
+                  },
+                  'message': 'Value must be valid',
                 },
-                'returnType': 'boolean',
-              },
-              'message': 'Value must be valid',
+              ],
             },
-          ],
-        });
+            catalog: trackingSurface.defaultCatalog!);
         trackingSurface.componentsModel.addComponent(comp);
         trackingSurface.dataModel.set('/label', 'Initial label');
         trackingSurface.dataModel.set('/val', 'bad');

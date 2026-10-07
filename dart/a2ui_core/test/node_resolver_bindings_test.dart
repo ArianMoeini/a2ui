@@ -59,9 +59,10 @@ _Fixture _setup(Map<String, dynamic> properties) {
     components: [ComponentApi(name: 'Group', schema: _groupSchema())],
     functions: [],
   );
-  final surface = SurfaceModel<ComponentApi>('surf-1', catalog: catalog);
+  final surface = SurfaceModel<ComponentApi>('surf-1', defaultCatalog: catalog);
   final resolver = NodeResolver<ComponentApi>(surface);
-  final model = ComponentModel('root', 'Group', properties);
+  final model = ComponentModel('root', 'Group', properties,
+      catalog: surface.defaultCatalog!);
   surface.componentsModel.addComponent(model);
   addTearDown(() {
     resolver.dispose();
@@ -355,14 +356,18 @@ void main() {
         );
         final surface = SurfaceModel<ComponentApi>(
           'surf-chk',
-          catalog: catalog,
+          defaultCatalog: catalog,
         );
         addTearDown(surface.dispose);
 
-        final unmarkedModel = ComponentModel('u1', 'Unmarked', {
-          'checks': 'preflight-passed',
-          'checkList': ['a', 'b'],
-        });
+        final unmarkedModel = ComponentModel(
+            'u1',
+            'Unmarked',
+            {
+              'checks': 'preflight-passed',
+              'checkList': ['a', 'b'],
+            },
+            catalog: surface.defaultCatalog!);
         surface.componentsModel.addComponent(unmarkedModel);
         final unmarkedBinder = GenericBinder(
           ComponentContext(surface, unmarkedModel),
@@ -390,15 +395,19 @@ void main() {
           isFalse,
         );
 
-        final markedModel = ComponentModel('m1', 'Marked', {
-          'label': 'Email',
-          'checks': [
+        final markedModel = ComponentModel(
+            'm1',
+            'Marked',
             {
-              'condition': false,
-              'message': 'Required field',
+              'label': 'Email',
+              'checks': [
+                {
+                  'condition': false,
+                  'message': 'Required field',
+                },
+              ],
             },
-          ],
-        });
+            catalog: surface.defaultCatalog!);
         surface.componentsModel.addComponent(markedModel);
         final markedBinder = GenericBinder(
           ComponentContext(surface, markedModel),

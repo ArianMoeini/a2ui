@@ -25,17 +25,29 @@ import 'catalog.dart';
 ///
 /// [properties] holds the component's own properties only. The envelope
 /// fields a component message carries, `id`, `component`, `catalogId` and
-/// `metadata`, live in [id], [type], [catalog] and [metadata] instead.
+/// `metadata`, live in [id], [type], [catalogId] and [metadata] instead.
 class ComponentModel {
   final String id;
   final String type;
 
-  /// The `catalogId` this component names for itself, or null when it uses
-  /// its surface's catalog.
+  /// The catalog this component resolved to.
   ///
-  /// A component whose catalog changes is recreated rather than updated, as
-  /// for a change of [type].
-  final String? catalog;
+  /// A component belongs to exactly one catalog: the one its `catalogId`
+  /// names, else the surface's default catalog. `MessageProcessor` resolves
+  /// it once, when the component arrives, so nothing downstream re-derives
+  /// it from the properties. A later update that resolves to a different
+  /// catalog replaces the model rather than changing this.
+  final Catalog<ComponentApi, FunctionImplementation> catalog;
+
+  /// The `catalogId` this component names for itself, or null when it names
+  /// none and so resolved to its surface's default catalog.
+  ///
+  /// This is what the payload wrote, kept so that [toJson] reads the same
+  /// way; [catalog] is what it resolved to. An update that names the
+  /// surface default explicitly, or stops naming it, resolves to the same
+  /// [catalog] and changes only this. Updated with [properties], before
+  /// [onUpdated] fires.
+  String? catalogId;
 
   /// The `metadata` this component carries, or null when it carries none.
   ///
@@ -49,11 +61,17 @@ class ComponentModel {
   /// Fires whenever the component's properties are updated.
   EventListenable<ComponentModel> get onUpdated => _onUpdated;
 
+  /// Creates a component of [type] in [catalog].
+  ///
+  /// [initialProperties] are the component's own properties, without the
+  /// envelope fields. [catalogId] is the `catalogId` the payload named, if
+  /// any.
   ComponentModel(
     this.id,
     this.type,
     Map<String, dynamic> initialProperties, {
-    this.catalog,
+    required this.catalog,
+    this.catalogId,
     this.metadata,
   }) : _properties = Map.from(initialProperties);
 
@@ -71,12 +89,17 @@ class ComponentModel {
   }
 
   /// Returns the component as the message that would create it.
+  ///
+  /// Emits `catalogId` only when the payload named one. A component that
+  /// resolved to the surface default without naming it is not given one: the
+  /// object then reads the same way the payload did, and resolves to the same
+  /// [catalog] on that surface.
   Map<String, dynamic> toJson() {
     return {
       ..._properties,
       'id': id,
       'component': type,
-      if (catalog != null) 'catalogId': catalog,
+      if (catalogId != null) 'catalogId': catalogId,
       if (metadata != null) 'metadata': metadata,
     };
   }
@@ -85,34 +108,25 @@ class ComponentModel {
 /// Manages the collection of components for a specific surface.
 ///
 /// The graph queries ([getChildIds], [detectCycles], [validateTopology],
-/// [validateReferences] and [validateComponentsUpdate]) find child references
-/// through the reference properties the `catalog` passed to the constructor
-/// declares. `MessageProcessor` widens that to every catalog the surface's
-/// components draw on. A model built without a catalog finds no references.
+/// [validateReferences] and [validateComponentsUpdate]) find a component's
+/// child references through the reference properties its own
+/// [ComponentModel.catalog] declares, so a surface whose components come from
+/// several catalogs, or that has no default catalog, is walked correctly. The
+/// `catalog` passed to the constructor is only used to read the entries of an
+/// update passed to [validateComponentsUpdate].
 class SurfaceComponentsModel {
   final Map<String, ComponentModel> _components = {};
   final _onCreated = EventNotifier<ComponentModel>();
   final _onDeleted = EventNotifier<String>();
 
-  /// The catalog [refFields] is derived from until it is set.
+  /// The catalog [validateComponentsUpdate] reads new entries through.
   final Catalog<ComponentApi, FunctionApi>? _catalog;
 
-  Map<String, ComponentRefFields>? _refFields;
-
-  /// Creates an empty model whose graph queries find child references through
-  /// [catalog]'s reference properties, or find none when [catalog] is null.
+  /// Creates an empty model. [catalog] is the catalog the entries passed to
+  /// [validateComponentsUpdate] are read through, normally the surface's
+  /// default catalog; see there.
   SurfaceComponentsModel({Catalog<ComponentApi, FunctionApi>? catalog})
       : _catalog = catalog;
-
-  /// Which properties hold child references, per component type.
-  ///
-  /// Derived from the constructor's catalog on first use.
-  @internal
-  Map<String, ComponentRefFields> get refFields => _refFields ??=
-      _catalog == null ? const {} : extractComponentRefFields(_catalog);
-
-  @internal
-  set refFields(Map<String, ComponentRefFields> value) => _refFields = value;
 
   /// Fires when a new component is added to the model.
   EventListenable<ComponentModel> get onCreated => _onCreated;
@@ -179,9 +193,17 @@ class SurfaceComponentsModel {
     if (component == null) return const <ComponentReference>[];
     return componentReferences(
       component.properties,
-      refFields[component.type],
+      _refFieldsOf(component.catalog, component.type),
     );
   }
+
+  /// The reference properties [catalog] declares for [type], or null when
+  /// [catalog] is null or declares none.
+  static ComponentRefFields? _refFieldsOf(
+    Catalog<ComponentApi, FunctionApi>? catalog,
+    String type,
+  ) =>
+      catalog == null ? null : extractComponentRefFields(catalog)[type];
 
   /// Checks for self-references, cycles and over-deep chains, and returns the
   /// ids reachable from [rootId].
@@ -238,30 +260,62 @@ class SurfaceComponentsModel {
   /// `catalogId` when it omits that too. A duplicate id within [components]
   /// is an error.
   ///
+  /// An entry's references are read through the catalog it would belong to:
+  /// the one its `catalogId` names, when the constructor's catalog or an
+  /// existing component's has that id; the existing component's, for an
+  /// entry that omits both `component` and `catalogId`; and otherwise the
+  /// constructor's catalog. An entry whose catalog is none of those has no
+  /// references.
+  ///
   /// Throws [A2uiValidationError] for an entry with no id, or with no type and
   /// no existing component; otherwise throws as [validateTopology] does.
   void validateComponentsUpdate(
     List<Map<String, Object?>> components, [
     ValidationConfig config = ValidationConfig.strict,
   ]) =>
-      checkComponentsUpdate(components, config, refFields);
+      checkComponentsUpdate(components, config, catalogOf: _catalogOfEntry);
 
-  /// [validateComponentsUpdate] with [refFields] in place of this model's,
-  /// for a batch that draws on catalogs the model has not seen, and
-  /// [defaultRootId] as the root when [ValidationConfig.rootId] is null.
+  Catalog<ComponentApi, FunctionApi>? _catalogOfEntry(
+    Map<String, Object?> entry,
+  ) {
+    final ComponentModel? existing = _components[entry['id']];
+    switch (entry['catalogId']) {
+      case final String catalogId:
+        if (_catalog?.id == catalogId) return _catalog;
+        for (final ComponentModel component in _components.values) {
+          if (component.catalog.id == catalogId) return component.catalog;
+        }
+        return null;
+      case null when entry['component'] == null && existing != null:
+        return existing.catalog;
+    }
+    return _catalog;
+  }
+
+  /// [validateComponentsUpdate] with [catalogOf] deciding the catalog each
+  /// entry's references are read through, for a caller that has resolved
+  /// them, and [defaultRootId] as the root when [ValidationConfig.rootId] is
+  /// null. Components the model already holds are read through their own
+  /// [ComponentModel.catalog].
   @internal
   void checkComponentsUpdate(
     List<Map<String, Object?>> components,
-    ValidationConfig config,
-    Map<String, ComponentRefFields> refFields, {
+    ValidationConfig config, {
+    required Catalog<ComponentApi, FunctionApi>? Function(
+      Map<String, Object?> entry,
+    ) catalogOf,
     String defaultRootId = 'root',
   }) {
     checkDuplicateComponentIds(components);
-    // Each component as its type and the map its references are read from.
-    // Existing components lend their properties map rather than a copy.
-    final candidate = <String, (String, Map<String, Object?>)>{
+    // Each component as the map its references are read from and the
+    // reference properties of its type. Existing components lend their
+    // properties map rather than a copy.
+    final candidate = <String, (Map<String, Object?>, ComponentRefFields?)>{
       for (final MapEntry<String, ComponentModel> entry in _components.entries)
-        entry.key: (entry.value.type, entry.value.properties),
+        entry.key: (
+          entry.value.properties,
+          _refFieldsOf(entry.value.catalog, entry.value.type),
+        ),
     };
     for (final component in components) {
       final Object? id = component['id'];
@@ -273,20 +327,26 @@ class SurfaceComponentsModel {
       }
       final Object? type = component['component'];
       final ComponentModel? existing = _components[id];
+      final String resolvedType;
       if (type is String) {
-        candidate[id] = (type, component);
+        resolvedType = type;
       } else if (existing != null) {
-        candidate[id] = (existing.type, component);
+        resolvedType = existing.type;
       } else {
         throw A2uiValidationError(
           "Cannot create component $id without a 'component' type.",
           details: component,
         );
       }
+      candidate[id] = (
+        component,
+        _refFieldsOf(catalogOf(component), resolvedType),
+      );
     }
     checkComponentGraph(candidate.keys.toSet(), (String id) {
-      final (String type, Map<String, Object?> source) = candidate[id]!;
-      return componentReferences(source, refFields[type]);
+      final (Map<String, Object?> source, ComponentRefFields? fields) =
+          candidate[id]!;
+      return componentReferences(source, fields);
     }, config, defaultRootId: defaultRootId);
   }
 

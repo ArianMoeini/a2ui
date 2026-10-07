@@ -142,7 +142,7 @@ void _runResolvePathCase(Map<String, Object?> testCase) {
       (args['context_path'] as String?) ??
       '/';
   final ctx =
-      DataContext(DataModel(), (name, fnArgs, ctx) => null, contextPath);
+      DataContext(DataModel(), (call, fnArgs, ctx) => null, contextPath);
   expect(ctx.resolvePath(path), equals(testCase['expect']));
 }
 

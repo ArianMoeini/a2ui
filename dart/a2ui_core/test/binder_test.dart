@@ -44,13 +44,17 @@ void main() {
 
     setUp(() {
       catalog = MinimalCatalog();
-      surface = SurfaceModel('s1', catalog: catalog);
+      surface = SurfaceModel('s1', defaultCatalog: catalog);
     });
 
     test('resolves dynamic properties', () {
-      final comp = ComponentModel('c1', 'Text', {
-        'text': {'path': '/val'},
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': {'path': '/val'},
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
       surface.dataModel.set('/val', 'initial');
 
@@ -75,12 +79,16 @@ void main() {
         actionName = action.name;
       });
 
-      final comp = ComponentModel('c1', 'Button', {
-        'child': 'c2',
-        'action': {
-          'event': {'name': 'test_action'},
-        },
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Button',
+          {
+            'child': 'c2',
+            'action': {
+              'event': {'name': 'test_action'},
+            },
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -105,7 +113,7 @@ void main() {
         errors.clear();
         spySurface = SurfaceModel(
           's2',
-          catalog: Catalog<ComponentApi, FunctionImplementation>(
+          defaultCatalog: Catalog<ComponentApi, FunctionImplementation>(
             id: 'test',
             components: [MinimalButtonApi()],
             functions: [
@@ -137,10 +145,14 @@ void main() {
         Map<String, dynamic> action, {
         String? basePath,
       }) async {
-        final comp = ComponentModel('c1', 'Button', {
-          'child': 'c2',
-          'action': action,
-        });
+        final comp = ComponentModel(
+            'c1',
+            'Button',
+            {
+              'child': 'c2',
+              'action': action,
+            },
+            catalog: spySurface.defaultCatalog!);
         spySurface.componentsModel.addComponent(comp);
         final context = ComponentContext(spySurface, comp, basePath: basePath);
         final binder = GenericBinder(context, MinimalButtonApi().schema);
@@ -225,19 +237,23 @@ void main() {
       });
       surface.dataModel.set('/tab', 'general');
 
-      final comp = ComponentModel('c1', 'Button', {
-        'child': 'c2',
-        'action': {
-          'event': {
-            'name': 'navigate',
-            'context': {
-              'path': '/settings',
-              'call': 'literal',
-              'tab': {'path': '/tab'},
+      final comp = ComponentModel(
+          'c1',
+          'Button',
+          {
+            'child': 'c2',
+            'action': {
+              'event': {
+                'name': 'navigate',
+                'context': {
+                  'path': '/settings',
+                  'call': 'literal',
+                  'tab': {'path': '/tab'},
+                },
+              },
             },
           },
-        },
-      });
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -261,16 +277,20 @@ void main() {
       surface.dataModel.set('/userId', 'u123');
       surface.dataModel.set('/msg', 'Sending message');
 
-      final comp = ComponentModel('c1', 'Button', {
-        'child': 'c2',
-        'action': {
-          'name': 'submit_direct',
-          'userMessage': {'path': '/msg'},
-          'context': {
-            'user': {'path': '/userId'},
+      final comp = ComponentModel(
+          'c1',
+          'Button',
+          {
+            'child': 'c2',
+            'action': {
+              'name': 'submit_direct',
+              'userMessage': {'path': '/msg'},
+              'context': {
+                'user': {'path': '/userId'},
+              },
+            },
           },
-        },
-      });
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -287,9 +307,13 @@ void main() {
     });
 
     test('writes back a nested map with non-string keys', () {
-      final comp = ComponentModel('c1', 'Text', {
-        'text': {'path': '/val'},
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': {'path': '/val'},
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -311,9 +335,13 @@ void main() {
       surface.dataModel.set('/val', {
         'byIndex': {1: 'one'},
       });
-      final comp = ComponentModel('c1', 'Text', {
-        'text': {'path': '/val'},
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Text',
+          {
+            'text': {'path': '/val'},
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -329,9 +357,13 @@ void main() {
     });
 
     test('resolves structural children', () {
-      final comp = ComponentModel('c1', 'Row', {
-        'children': ['child1', 'child2'],
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Row',
+          {
+            'children': ['child1', 'child2'],
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -345,11 +377,15 @@ void main() {
     });
 
     test('caps a static child id list at maxDynamicChildListSize', () {
-      final comp = ComponentModel('c1', 'Row', {
-        'children': [
-          for (int i = 0; i < maxDynamicChildListSize + 5; i++) 'child$i',
-        ],
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Row',
+          {
+            'children': [
+              for (int i = 0; i < maxDynamicChildListSize + 5; i++) 'child$i',
+            ],
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -362,15 +398,20 @@ void main() {
     });
 
     test('caps a static child id list nested in array items', () {
-      final comp = ComponentModel('c1', 'Groups', {
-        'groups': [
+      final comp = ComponentModel(
+          'c1',
+          'Groups',
           {
-            'children': [
-              for (int i = 0; i < maxDynamicChildListSize + 3; i++) 'child$i',
+            'groups': [
+              {
+                'children': [
+                  for (int i = 0; i < maxDynamicChildListSize + 3; i++)
+                    'child$i',
+                ],
+              },
             ],
           },
-        ],
-      });
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -393,15 +434,19 @@ void main() {
     });
 
     test('resolves checkable validation', () async {
-      final comp = ComponentModel('c1', 'TextField', {
-        'label': 'Name',
-        'checks': [
+      final comp = ComponentModel(
+          'c1',
+          'TextField',
           {
-            'condition': {'path': '/valid'},
-            'message': 'Must be valid',
+            'label': 'Name',
+            'checks': [
+              {
+                'condition': {'path': '/valid'},
+                'message': 'Must be valid',
+              },
+            ],
           },
-        ],
-      });
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
       surface.dataModel.set('/valid', false);
 
@@ -434,7 +479,7 @@ void main() {
         ],
       );
       final SurfaceModel<ComponentApi> customSurface =
-          SurfaceModel('s-val', catalog: customCatalog);
+          SurfaceModel('s-val', defaultCatalog: customCatalog);
       customSurface.dataModel.set('/r1', {'valid': true});
       customSurface.dataModel.set('/r2', {
         'valid': false,
@@ -456,56 +501,60 @@ void main() {
       });
       customSurface.dataModel.set('/r5', {'valid': false});
 
-      final comp = ComponentModel('c1', 'TextField', {
-        'label': 'Input',
-        'checks': [
+      final comp = ComponentModel(
+          'c1',
+          'TextField',
           {
-            'condition': {
-              'call': 'checkResult',
-              'args': {
-                'result': {'path': '/r1'},
+            'label': 'Input',
+            'checks': [
+              {
+                'condition': {
+                  'call': 'checkResult',
+                  'args': {
+                    'result': {'path': '/r1'},
+                  },
+                },
+                'message': 'Fallback 1',
               },
-            },
-            'message': 'Fallback 1',
-          },
-          {
-            'condition': {
-              'call': 'checkResult',
-              'args': {
-                'result': {'path': '/r2'},
+              {
+                'condition': {
+                  'call': 'checkResult',
+                  'args': {
+                    'result': {'path': '/r2'},
+                  },
+                },
+                'message': 'Fallback 2',
               },
-            },
-            'message': 'Fallback 2',
-          },
-          {
-            'condition': {
-              'call': 'checkResult',
-              'args': {
-                'result': {'path': '/r3'},
+              {
+                'condition': {
+                  'call': 'checkResult',
+                  'args': {
+                    'result': {'path': '/r3'},
+                  },
+                },
+                'message': 'Fallback 3',
               },
-            },
-            'message': 'Fallback 3',
-          },
-          {
-            'condition': {
-              'call': 'checkResult',
-              'args': {
-                'result': {'path': '/r4'},
+              {
+                'condition': {
+                  'call': 'checkResult',
+                  'args': {
+                    'result': {'path': '/r4'},
+                  },
+                },
+                'message': 'Fallback 4',
               },
-            },
-            'message': 'Fallback 4',
-          },
-          {
-            'condition': {
-              'call': 'checkResult',
-              'args': {
-                'result': {'path': '/r5'},
+              {
+                'condition': {
+                  'call': 'checkResult',
+                  'args': {
+                    'result': {'path': '/r5'},
+                  },
+                },
+                'message': 'Fallback 5',
               },
-            },
-            'message': 'Fallback 5',
+            ],
           },
-        ],
-      });
+          catalog: customSurface.defaultCatalog!);
       customSurface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(customSurface, comp);
@@ -575,17 +624,21 @@ void main() {
       surface.onError.addListener(errors.add);
       surface.dataModel.set('/valid', false);
 
-      final comp = ComponentModel('c1', 'TextField', {
-        'label': 'Name',
-        'checks': [
-          42,
-          'not-a-rule-map',
+      final comp = ComponentModel(
+          'c1',
+          'TextField',
           {
-            'condition': {'path': '/valid'},
-            'message': 'Must be valid',
+            'label': 'Name',
+            'checks': [
+              42,
+              'not-a-rule-map',
+              {
+                'condition': {'path': '/valid'},
+                'message': 'Must be valid',
+              },
+            ],
           },
-        ],
-      });
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -660,10 +713,14 @@ void main() {
       final errors = <A2uiClientError>[];
       surface.onError.addListener(errors.add);
 
-      final comp = ComponentModel('c1', 'TextField', {
-        'label': 'Name',
-        'checks': 'not-a-list',
-      });
+      final comp = ComponentModel(
+          'c1',
+          'TextField',
+          {
+            'label': 'Name',
+            'checks': 'not-a-list',
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
@@ -680,16 +737,20 @@ void main() {
       final errors = <A2uiClientError>[];
       surface.onError.addListener(errors.add);
 
-      final comp = ComponentModel('c1', 'TextField', {
-        'label': 'Name',
-        'checks': <Object?>[
-          'not-a-map',
-          <Object?, Object?>{
-            'condition': <Object?, Object?>{'path': '/valid'},
-            'message': 'Must be valid',
+      final comp = ComponentModel(
+          'c1',
+          'TextField',
+          {
+            'label': 'Name',
+            'checks': <Object?>[
+              'not-a-map',
+              <Object?, Object?>{
+                'condition': <Object?, Object?>{'path': '/valid'},
+                'message': 'Must be valid',
+              },
+            ],
           },
-        ],
-      });
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
       surface.dataModel.set('/valid', false);
 
@@ -716,15 +777,19 @@ void main() {
       () {
         final v1Surface = SurfaceModel<ComponentApi>(
           's-v1',
-          catalog: catalog,
+          defaultCatalog: catalog,
           protocolVersion: 'v1.0',
         );
         addTearDown(v1Surface.dispose);
         v1Surface.dataModel.set('/val', 'initial');
 
-        final comp = ComponentModel('c1', 'Text', {
-          'text': {'@path': '/val'},
-        });
+        final comp = ComponentModel(
+            'c1',
+            'Text',
+            {
+              'text': {'@path': '/val'},
+            },
+            catalog: v1Surface.defaultCatalog!);
         v1Surface.componentsModel.addComponent(comp);
 
         final context = ComponentContext(v1Surface, comp);
@@ -740,9 +805,13 @@ void main() {
         expect(v1Surface.dataModel.get('/val'), 'updated-v1');
 
         // Plain {'path': '/val'} in v1.0 is a literal map, not a WritableBinding.
-        final comp2 = ComponentModel('c2', 'Text', {
-          'text': {'path': '/val'},
-        });
+        final comp2 = ComponentModel(
+            'c2',
+            'Text',
+            {
+              'text': {'path': '/val'},
+            },
+            catalog: v1Surface.defaultCatalog!);
         v1Surface.componentsModel.addComponent(comp2);
         final binder2 = GenericBinder(
           ComponentContext(v1Surface, comp2),
@@ -765,7 +834,7 @@ void main() {
         final v1Surface = SurfaceModel<ComponentApi>(
           's-v1-fn',
           protocolVersion: 'v1.0',
-          catalog: Catalog<ComponentApi, FunctionImplementation>(
+          defaultCatalog: Catalog<ComponentApi, FunctionImplementation>(
             id: 'test-v1',
             components: [MinimalButtonApi()],
             functions: [
@@ -789,10 +858,14 @@ void main() {
           Map<String, dynamic> action, {
           String? basePath,
         }) async {
-          final comp = ComponentModel('c1', 'Button', {
-            'child': 'c2',
-            'action': action,
-          });
+          final comp = ComponentModel(
+              'c1',
+              'Button',
+              {
+                'child': 'c2',
+                'action': action,
+              },
+              catalog: v1Surface.defaultCatalog!);
           v1Surface.componentsModel.removeComponent('c1');
           v1Surface.componentsModel.addComponent(comp);
           final ctx = ComponentContext(v1Surface, comp, basePath: basePath);
@@ -851,7 +924,7 @@ void main() {
     test('v1.0 ChildListTemplate expands items using bindingFor', () {
       final v1Surface = SurfaceModel<ComponentApi>(
         's-v1-tpl',
-        catalog: catalog,
+        defaultCatalog: catalog,
         protocolVersion: 'v1.0',
       );
       addTearDown(v1Surface.dispose);
@@ -860,9 +933,13 @@ void main() {
         {'title': 'Two'},
       ]);
 
-      final comp = ComponentModel('c1', 'Row', {
-        'children': {'path': '/todos', 'componentId': 'todo-item'},
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Row',
+          {
+            'children': {'path': '/todos', 'componentId': 'todo-item'},
+          },
+          catalog: v1Surface.defaultCatalog!);
       v1Surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(v1Surface, comp);
@@ -893,10 +970,14 @@ void main() {
         surface.onAction.addListener(actions.add);
         surface.onError.addListener(errors.add);
 
-        final comp = ComponentModel('c1', 'Button', {
-          'child': 'c2',
-          'action': {'unexpected': 'payload'},
-        });
+        final comp = ComponentModel(
+            'c1',
+            'Button',
+            {
+              'child': 'c2',
+              'action': {'unexpected': 'payload'},
+            },
+            catalog: surface.defaultCatalog!);
         surface.componentsModel.addComponent(comp);
 
         final context = ComponentContext(surface, comp);
@@ -925,10 +1006,14 @@ void main() {
         },
       });
 
-      final comp = ComponentModel('c1', 'Button', {
-        'child': 'c2',
-        'action': {'path': '/boundAction'},
-      });
+      final comp = ComponentModel(
+          'c1',
+          'Button',
+          {
+            'child': 'c2',
+            'action': {'path': '/boundAction'},
+          },
+          catalog: surface.defaultCatalog!);
       surface.componentsModel.addComponent(comp);
 
       final context = ComponentContext(surface, comp);
