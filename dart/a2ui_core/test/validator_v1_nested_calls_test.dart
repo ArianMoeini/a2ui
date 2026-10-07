@@ -61,6 +61,19 @@ void main() {
         );
       });
 
+      test('rejects a call object with no @call', () {
+        for (final Map<String, Object?> call in [
+          {'catalogId': 'https://example.com/other_catalog.json'},
+          {'args': <String, Object?>{}},
+        ]) {
+          expect(
+            () => validator().validateComponent(textCalling(call)),
+            rejected,
+            reason: '$call',
+          );
+        }
+      });
+
       test('accepts a call naming this catalog explicitly', () {
         expect(
           () => validator().validateComponent(

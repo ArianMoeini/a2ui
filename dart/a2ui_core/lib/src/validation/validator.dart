@@ -510,8 +510,8 @@ class PayloadValidator<C extends ComponentApi, F extends FunctionApi> {
     };
   }
 
-  /// A call's envelope with nothing checked against a catalog: any `@call`
-  /// other than `@index`, with object `args`.
+  /// A call's envelope with nothing checked against a catalog: a required
+  /// `@call` other than `@index`, with object `args`.
   static const Map<String, Object?> _anyV1FunctionCall = {
     'type': 'object',
     'properties': {
@@ -521,6 +521,9 @@ class PayloadValidator<C extends ComponentApi, F extends FunctionApi> {
       },
       'args': {'type': 'object'},
     },
+    // `FunctionCommon` already requires `@call`; stating it here keeps the
+    // envelope a complete call on its own.
+    'required': ['@call'],
   };
 
   /// The one system function v1.0 defines in the reserved `@` namespace.
