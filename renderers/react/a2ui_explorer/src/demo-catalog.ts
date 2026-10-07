@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import {IFRAME_CATALOG_ID, iframeCatalog} from '@a2ui/catalog-iframe';
 import {MCP_CATALOG_ID, mcpCatalog} from '@a2ui/catalog-mcp/v1_0';
 import {type ReactCatalogComponent} from '@a2ui/react/v0_9';
 import {Catalog} from '@a2ui/web_core/v0_9';
@@ -37,6 +38,13 @@ export const demoCatalog = new Catalog(
  * Additional v1.0 catalogs registered in the React explorer.
  */
 export function createDemoCatalogs(): Array<Catalog<ReactCatalogComponent>> {
+  const iframeDemoCatalog = new Catalog<ReactCatalogComponent>(
+    IFRAME_CATALOG_ID,
+    '1.0',
+    [...basicCatalogV10.components.values(), ...iframeCatalog.components.values()],
+    [...basicCatalogV10.functions.values()],
+    basicCatalogV10.themeSchema,
+  );
   const mcpDemoCatalog = new Catalog<ReactCatalogComponent>(
     MCP_CATALOG_ID,
     '1.0',
@@ -44,5 +52,5 @@ export function createDemoCatalogs(): Array<Catalog<ReactCatalogComponent>> {
     [...basicCatalogV10.functions.values(), ...mcpCatalog.functions.values()],
     basicCatalogV10.themeSchema,
   );
-  return [mcpDemoCatalog];
+  return [iframeDemoCatalog, mcpDemoCatalog];
 }

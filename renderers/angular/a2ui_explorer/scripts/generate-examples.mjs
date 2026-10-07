@@ -77,6 +77,10 @@ const EXTRA_V09_EXAMPLES = [
     filePath: '../../../catalogs/mcp/v1/examples/mcp-app-pdf-viewer.json',
     catalog: 'mcp',
   },
+  {
+    filePath: '../../../catalogs/iframe/examples/srcdoc-tip-calculator.json',
+    catalog: 'iframe',
+  },
 ];
 
 function readExampleFile(filePath, catalog, version) {

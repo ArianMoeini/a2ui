@@ -37,6 +37,7 @@
       "command": "yarn generate-examples && tsc && vite build",
       "dependencies": [
         "../../../typescript/web_core:build",
+        "../../../typescript/catalogs/iframe:build",
         "../../../typescript/catalogs/mcp:build",
         "../../markdown/markdown-it:build",
         "../:build",
@@ -72,6 +73,7 @@
     }
   },
   "dependencies": {
+    "@a2ui/catalog-iframe": "workspace:*",
     "@a2ui/catalog-mcp": "workspace:*",
     "@a2ui/lit": "workspace:*",
     "@a2ui/markdown-it": "workspace:*",

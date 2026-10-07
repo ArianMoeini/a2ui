@@ -32,6 +32,7 @@ import {
   CatalogComponent,
   MarkdownRenderer,
 } from '@a2ui/angular/v0_9';
+import {IFRAME_CATALOG_ID, iframeCatalog} from '@a2ui/catalog-iframe';
 import {MCP_CATALOG_ID, mcpCatalog} from '@a2ui/catalog-mcp/v1_0';
 import {type ComponentApi, ComponentContext} from '@a2ui/web_core/v0_9';
 import {setMarkdownRenderer} from '@a2ui/web_core/v0_9/basic_catalog';
@@ -124,6 +125,15 @@ export class DemoCatalog extends AngularCatalog {
  * Creates additional v1.0 catalogs registered in the Angular explorer.
  */
 export function createDemoCatalogs(): AngularCatalog[] {
+  const iframeDemoCatalog = new AngularCatalog(
+    IFRAME_CATALOG_ID,
+    '1.0',
+    [...basicCatalogV10.components.values(), ...iframeCatalog.components.values()].map(
+      toUniversalDemoComponent,
+    ),
+    [...basicCatalogV10.functions.values()],
+    basicCatalogV10.themeSchema,
+  );
   const mcpDemoCatalog = new AngularCatalog(
     MCP_CATALOG_ID,
     '1.0',
@@ -133,5 +143,5 @@ export function createDemoCatalogs(): AngularCatalog[] {
     [...basicCatalogV10.functions.values(), ...mcpCatalog.functions.values()],
     basicCatalogV10.themeSchema,
   );
-  return [mcpDemoCatalog];
+  return [iframeDemoCatalog, mcpDemoCatalog];
 }

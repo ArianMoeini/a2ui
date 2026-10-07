@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import example from '../../../../catalogs/iframe/examples/01_url-frame.json' with {type: 'json'};
+import urlFrameExample from '../../../../catalogs/iframe/examples/01_url-frame.json' with {type: 'json'};
+import tipCalculatorExample from '../../../../catalogs/iframe/examples/srcdoc-tip-calculator.json' with {type: 'json'};
 import {
   isWebComponentImplementation,
   MessageProcessor,
@@ -51,11 +52,15 @@ describe('iframeCatalog', () => {
   it('is enough on its own to process the messages of the catalog examples', () => {
     const processor = new MessageProcessor<WebComponentImplementation>([iframeCatalog]);
 
-    processor.processMessages(parseExampleMessages(example));
+    processor.processMessages(parseExampleMessages(urlFrameExample));
+    processor.processMessages(parseExampleMessages(tipCalculatorExample));
 
-    const surface = processor.model.getSurface('gallery-iframe-url-frame')!;
-    expect(surface.catalog).toBe(iframeCatalog);
-    expect(surface.componentsModel.get('order_tracker')?.type).toBe('WebAppFrameUrl');
-    surface.dispose();
+    const urlFrame = processor.model.getSurface('gallery-iframe-url-frame')!;
+    expect(urlFrame.catalog).toBe(iframeCatalog);
+    expect(urlFrame.componentsModel.get('order_tracker')?.type).toBe('WebAppFrameUrl');
+    const tipCalculator = processor.model.getSurface('gallery-iframe-tip-calculator')!;
+    expect(tipCalculator.componentsModel.get('tip_calculator')?.type).toBe('WebAppFrameSrcdoc');
+    urlFrame.dispose();
+    tipCalculator.dispose();
   });
 });

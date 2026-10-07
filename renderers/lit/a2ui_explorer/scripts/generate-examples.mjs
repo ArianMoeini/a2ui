@@ -50,6 +50,10 @@ const EXTRA_EXAMPLES = [
     key: '44_mcp-app-pdf-viewer.json',
     relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-pdf-viewer.json',
   },
+  {
+    key: '45_srcdoc-tip-calculator.json',
+    relativePath: '../../../../../catalogs/iframe/examples/srcdoc-tip-calculator.json',
+  },
 ];
 const OUT_FILE = path.resolve(import.meta.dirname, '../src/generated/examples-list.ts');
 
