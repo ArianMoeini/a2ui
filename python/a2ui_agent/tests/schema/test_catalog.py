@@ -14,11 +14,18 @@
 
 import pytest
 
-from a2ui.core import A2uiCatalogError
+from a2ui.core import (
+    A2uiCatalogError,
+    A2uiErrorDetail,
+    A2uiValidationError,
+    CatalogApi,
+    PayloadValidator,
+)
 from a2ui.core.basic_catalog import BasicCatalog, v0_8, v0_9, v1_0
 from a2ui.schema import (
     VERSION_0_8,
     VERSION_0_9,
+    VERSION_1_0,
     CatalogConfig,
     InMemoryCatalogProvider,
     remove_strict_validation,
@@ -150,3 +157,163 @@ def test_basic_catalog_id_retrieval_methods():
     # BasicCatalog requires protocol_version with no implicit default.
     with pytest.raises(TypeError):
         BasicCatalog()  # type: ignore[call-arg]
+
+
+def _v10_basic_json_catalog() -> CatalogApi:
+    """Returns the v1.0 basic catalog parsed from its JSON schema."""
+    return CatalogConfig(
+        name=BASIC_CATALOG_NAME,
+        provider=InMemoryCatalogProvider(v1_0.BasicCatalog().catalog_schema),
+    ).to_catalog(protocol_version=VERSION_1_0)
+
+
+def _validate_components(
+    catalog: CatalogApi, components: dict | list[dict]
+) -> list[A2uiErrorDetail]:
+    """Collects the errors a direct PayloadValidator reports per component."""
+    validator = PayloadValidator(catalog)
+    errors: list[A2uiErrorDetail] = []
+    for component in components if isinstance(components, list) else [components]:
+        try:
+            validator.validate_component(component)
+        except A2uiValidationError as e:
+            errors.extend(e.details)
+    return errors
+
+
+def _text_with(call: dict) -> dict:
+    return {"id": "t1", "component": "Text", "text": call}
+
+
+def test_v10_validate_components_checks_nested_calls():
+    catalog = _v10_basic_json_catalog()
+
+    assert not _validate_components(
+        catalog, _text_with({"@call": "formatString", "args": {"value": "hi"}})
+    )
+
+    unknown = _validate_components(catalog, _text_with({"@call": "noSuchFn"}))
+    assert any(e.code == "unrecognized_function" for e in unknown)
+
+    nested_unknown = _validate_components(
+        catalog,
+        _text_with({
+            "@call": "formatString",
+            "args": {"value": {"@call": "noSuchFn", "args": {}}},
+        }),
+    )
+    assert any(e.code == "unrecognized_function" for e in nested_unknown)
+
+    extra_arg = _validate_components(
+        catalog,
+        _text_with({"@call": "formatString", "args": {"value": "hi", "bogus": 1}}),
+    )
+    assert any(
+        e.code == "extra_field" and e.path == "components.t1.text" for e in extra_arg
+    )
+
+    missing_arg = _validate_components(
+        catalog, _text_with({"@call": "formatString", "args": {}})
+    )
+    assert any(
+        e.code == "missing_field" and e.path == "components.t1.text"
+        for e in missing_arg
+    )
+
+
+def test_v10_validate_components_reports_one_located_error_per_bad_call():
+    catalog = _v10_basic_json_catalog()
+
+    errors = _validate_components(
+        catalog,
+        [
+            {"id": "a", "component": "Text", "text": {"@call": "noSuchFn"}},
+            {"id": "b", "component": "Text", "text": {"@call": "alsoNo"}},
+        ],
+    )
+
+    assert [(e.path, e.code) for e in errors] == [
+        ("components.a.text", "unrecognized_function"),
+        ("components.b.text", "unrecognized_function"),
+    ]
+
+
+def test_v10_validate_components_accepts_call_naming_another_catalog():
+    catalog = _v10_basic_json_catalog()
+
+    assert not _validate_components(
+        catalog,
+        _text_with({
+            "@call": "formatString",
+            "catalogId": "https://example.com/other_catalog.json",
+            "args": {"value": "hi"},
+        }),
+    )
+
+
+def test_v10_basic_config_validate_components_judges_only_calls_it_runs():
+    catalog = CatalogConfig.from_catalog(
+        BASIC_CATALOG_NAME, BasicCatalog(VERSION_1_0)
+    ).to_catalog(protocol_version=VERSION_1_0)
+
+    # The call names another catalog, so basic cannot judge its function or
+    # args, even though basic declares no `shout`.
+    assert not _validate_components(
+        catalog,
+        _text_with({
+            "@call": "shout",
+            "catalogId": "https://example.com/other_catalog.json",
+            "args": {"value": 3, "loud": True},
+        }),
+    )
+    # An empty catalogId names a catalog too, so the same applies.
+    assert not _validate_components(
+        catalog, _text_with({"@call": "shout", "catalogId": "", "args": {}})
+    )
+    # Only identifier syntax is checked for such a call.
+    bad_identifier = _validate_components(
+        catalog,
+        _text_with({
+            "@call": "shout",
+            "catalogId": "https://example.com/other_catalog.json",
+            "args": {"bad-arg": 1},
+        }),
+    )
+    assert [(e.path, e.code) for e in bad_identifier] == [
+        ("components.t1.text.args.bad-arg", "invalid_identifier")
+    ]
+
+    # A call that names no catalogId or basic's own runs in basic.
+    for call in (
+        {"@call": "noSuchFn"},
+        {"@call": "noSuchFn", "catalogId": catalog.catalog_id},
+    ):
+        errors = _validate_components(catalog, _text_with(call))
+        assert [(e.path, e.code) for e in errors] == [
+            ("components.t1.text", "unrecognized_function")
+        ]
+
+
+def test_v10_validate_components_rejects_bad_catalog_ids():
+    catalog = _v10_basic_json_catalog()
+
+    for bad_id in (0, False, 5):
+        errors = _validate_components(
+            catalog,
+            _text_with({
+                "@call": "formatString",
+                "catalogId": bad_id,
+                "args": {"value": "hi"},
+            }),
+        )
+        assert ("components.t1.text.catalogId", "type_mismatch") in [
+            (e.path, e.code) for e in errors
+        ]
+        assert not any(e.code == "unrecognized_function" for e in errors)
+
+    index_errors = _validate_components(
+        catalog, _text_with({"@call": "@index", "catalogId": catalog.catalog_id})
+    )
+    assert [(e.path, e.code) for e in index_errors] == [
+        ("components.t1.text.catalogId", "extra_field")
+    ]
