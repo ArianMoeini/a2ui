@@ -17,9 +17,10 @@
 import {useState, useEffect, useSyncExternalStore, useCallback, useRef} from 'react';
 import {MessageProcessor, type SurfaceModel, type A2uiClientAction} from '@a2ui/web_core/v0_9';
 import {A2uiSurface, MarkdownContext, type ReactCatalogComponent} from '@a2ui/react/v0_9';
-import {demoCatalog} from './demo-catalog';
+import {demoCatalog, createDemoCatalogs} from './demo-catalog';
 import {getDemoItems} from './examples';
 import {renderMarkdown} from '@a2ui/markdown-it';
+import {observeMcpApps} from './mcp-app-resizer';
 import styles from './App.module.css';
 
 const demoItems = getDemoItems();
@@ -144,6 +145,10 @@ export const App = ({initialExampleId, onAction}: AppProps) => {
     onActionRef.current = onAction;
   }, [onAction]);
 
+  useEffect(() => {
+    return observeMcpApps(() => (typeof document !== 'undefined' ? document.body : null));
+  }, []);
+
   // Handle keyboard shortcuts ('j' and 'k')
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -195,9 +200,18 @@ export const App = ({initialExampleId, onAction}: AppProps) => {
           prevProcessor.model.dispose();
         }
         const newProcessor = new MessageProcessor<ReactCatalogComponent>(
-          [demoCatalog],
+          [demoCatalog, ...createDemoCatalogs()],
           async (action: A2uiClientAction) => {
             setLogs(l => [...l, {time: new Date().toISOString(), action}]);
+            if (action.name === 'get_order') {
+              const surface = newProcessor.model.getSurface(action.surfaceId);
+              surface?.dataModel.set('/order/toolResult', {
+                items: [
+                  {name: 'Mechanical Keyboard', qty: 1, price: 60},
+                  {name: 'USB-C Coiled Cable', qty: 2, price: 15},
+                ],
+              });
+            }
             if (onActionRef.current) {
               onActionRef.current(action);
             }

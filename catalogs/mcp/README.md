@@ -57,6 +57,13 @@ The [v1/examples](v1/examples/) directory holds A2UI message sequences that vali
 
 - [00_inline-tool-call.json](v1/examples/00_inline-tool-call.json) renders an inline feedback form whose `submit_feedback` tool call is declared in `allowedTools`.
 - [01_data-binding.json](v1/examples/01_data-binding.json) binds the app to the `/player` data path so it stays in sync with sibling basic components.
+- [mcp-app-order-summary.json](v1/examples/mcp-app-order-summary.json) renders an Order Summary `McpApp` that loads an order through `get_order` and totals it with the discount code typed in a sibling `TextField`; `tests/examples/mcp_app_order_summary.test.ts` of the TypeScript package runs it end to end.
+- [mcp-app-mermaid-diagram.json](v1/examples/mcp-app-mermaid-diagram.json) renders an interactive Mermaid Diagram Studio `McpApp` synchronized with `/mermaid`.
+- [mcp-app-budget-allocator.json](v1/examples/mcp-app-budget-allocator.json) renders a SaaS Budget Allocator `McpApp` synchronized with `/budget`.
+- [mcp-app-sheet-music.json](v1/examples/mcp-app-sheet-music.json) renders an ABC Sheet Music Engraver & Synth `McpApp` synchronized with `/music`.
+- [mcp-app-commit-diff.json](v1/examples/mcp-app-commit-diff.json) renders a GitHub Commit Diff Reviewer `McpApp` synchronized with `/diff`.
+- [mcp-app-3d-geometry.json](v1/examples/mcp-app-3d-geometry.json) renders a 3D Holographic Geometry Studio `McpApp` synchronized with `/scene3d`.
+- [mcp-app-pdf-viewer.json](v1/examples/mcp-app-pdf-viewer.json) renders a PDF Document Viewer `McpApp` synchronized with `/pdf`.
 
 ## Implementations
 

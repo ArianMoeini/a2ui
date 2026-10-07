@@ -21,6 +21,36 @@ const SPEC_EXAMPLES_DIR = path.resolve(
   import.meta.dirname,
   '../../../../specification/v0_9/catalogs/basic/examples',
 );
+const EXTRA_EXAMPLES = [
+  {
+    key: '38_mcp-app-order-summary.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-order-summary.json',
+  },
+  {
+    key: '39_mcp-app-mermaid-diagram.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-mermaid-diagram.json',
+  },
+  {
+    key: '40_mcp-app-budget-allocator.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-budget-allocator.json',
+  },
+  {
+    key: '41_mcp-app-sheet-music.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-sheet-music.json',
+  },
+  {
+    key: '42_mcp-app-commit-diff.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-commit-diff.json',
+  },
+  {
+    key: '43_mcp-app-3d-geometry.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-3d-geometry.json',
+  },
+  {
+    key: '44_mcp-app-pdf-viewer.json',
+    relativePath: '../../../../../catalogs/mcp/v1/examples/mcp-app-pdf-viewer.json',
+  },
+];
 const OUT_FILE = path.resolve(import.meta.dirname, '../src/generated/examples-list.ts');
 
 /**
@@ -53,6 +83,12 @@ function generateExamplesBundle() {
 
     imports.push(`import ${variableName} from '${relativePath}';`);
     entries.push(`  '${file}': { default: ${variableName} }`);
+  });
+
+  EXTRA_EXAMPLES.forEach((extra, index) => {
+    const variableName = `extra_example_${index}`;
+    imports.push(`import ${variableName} from '${extra.relativePath}';`);
+    entries.push(`  '${extra.key}': { default: ${variableName} }`);
   });
 
   const content = `/**

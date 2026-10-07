@@ -1,0 +1,75 @@
+{
+  "name": "MCP App commit diff",
+  "description": "Interactive GitHub commit diff reviewer MCP App with live line filtering and inline review comment actions.",
+  "messages": [
+    {
+      "version": "v1.0",
+      "createSurface": {
+        "surfaceId": "gallery-mcp-app-commit-diff",
+        "catalogId": "https://a2ui.org/specification/v1_0/catalogs/mcp/catalog.json"
+      }
+    },
+    {
+      "version": "v1.0",
+      "updateDataModel": {
+        "surfaceId": "gallery-mcp-app-commit-diff",
+        "value": {
+          "diff": {
+            "filter": "",
+            "reviewStatus": "Approved line 208 in mcp_app_bridge.ts"
+          }
+        }
+      }
+    },
+    {
+      "version": "v1.0",
+      "updateComponents": {
+        "surfaceId": "gallery-mcp-app-commit-diff",
+        "components": [
+          {
+            "id": "root",
+            "component": "Column",
+            "children": ["diff_heading", "diff_filter_input", "diff_app", "diff_status_text"],
+            "align": "stretch"
+          },
+          {
+            "id": "diff_heading",
+            "component": "Text",
+            "text": "### GitHub Commit Diff Viewer (`apigene/mcp-apps` — `ontoolinput` filter + inline review comments)"
+          },
+          {
+            "id": "diff_filter_input",
+            "component": "TextField",
+            "label": "Filter diff lines",
+            "placeholder": "sendStandardToolNotifications",
+            "value": {
+              "@path": "/diff/filter"
+            }
+          },
+          {
+            "id": "diff_app",
+            "component": "McpApp",
+            "title": "GitHub Commit Diff Reviewer",
+            "htmlContent": "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\" />\n<style>\n\n* { box-sizing: border-box; }\nbody {\n  margin: 0;\n  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background: #0f172a;\n  color: #e2e8f0;\n  height: 100vh;\n  display: flex;\n  flex-direction: column;\n  overflow: hidden;\n}\n.topbar {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  padding: 8px 12px;\n  background: #1e293b;\n  border-bottom: 1px solid #334155;\n  flex-shrink: 0;\n  flex-wrap: wrap;\n}\n.topbar-left {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n.app-badge {\n  font-size: 11px;\n  font-weight: 700;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  padding: 2px 7px;\n  border-radius: 999px;\n  background: rgba(56, 189, 248, 0.16);\n  color: #38bdf8;\n  border: 1px solid rgba(56, 189, 248, 0.3);\n}\n.app-title {\n  font-size: 13px;\n  font-weight: 600;\n  color: #f8fafc;\n}\n.topbar-right {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex-wrap: wrap;\n}\n.dims-pill {\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 11px;\n  padding: 2px 8px;\n  border-radius: 6px;\n  background: #0f172a;\n  color: #94a3b8;\n  border: 1px solid #334155;\n}\n.btn {\n  font-family: inherit;\n  font-size: 11px;\n  font-weight: 500;\n  padding: 4px 9px;\n  border-radius: 6px;\n  border: 1px solid #475569;\n  background: #1e293b;\n  color: #e2e8f0;\n  cursor: pointer;\n  transition: all 120ms ease;\n}\n.btn:hover { background: #334155; color: #fff; }\n.btn.active, .btn.primary {\n  background: #2563eb;\n  border-color: #3b82f6;\n  color: #fff;\n}\n.btn.primary:hover { background: #1d4ed8; }\n\n.file-tabs {\n  display: flex;\n  gap: 6px;\n  padding: 6px 12px;\n  background: #0b1120;\n  border-bottom: 1px solid #334155;\n  overflow-x: auto;\n}\n.file-tab {\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 11px;\n  padding: 4px 10px;\n  border-radius: 6px;\n  cursor: pointer;\n  color: #94a3b8;\n  border: 1px solid transparent;\n}\n.file-tab.active {\n  background: #1e293b;\n  color: #f8fafc;\n  border-color: #475569;\n}\n.diff-scroll {\n  flex: 1;\n  overflow: auto;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 12px;\n}\ntable.diff-table {\n  width: 100%;\n  border-collapse: collapse;\n}\n.diff-row { line-height: 1.5; }\n.diff-row.add { background: rgba(34, 197, 94, 0.14); color: #bbf7d0; }\n.diff-row.del { background: rgba(239, 68, 68, 0.14); color: #fecaca; }\n.diff-row.ctx { color: #cbd5e1; }\n.ln {\n  width: 38px;\n  text-align: right;\n  padding: 2px 8px;\n  color: #64748b;\n  user-select: none;\n  border-right: 1px solid #1e293b;\n}\n.add-comment-btn {\n  display: inline-block;\n  width: 18px;\n  height: 18px;\n  line-height: 16px;\n  text-align: center;\n  border-radius: 4px;\n  background: #2563eb;\n  color: #fff;\n  font-weight: 700;\n  cursor: pointer;\n  opacity: 0;\n  margin-right: 6px;\n}\n.diff-row:hover .add-comment-btn { opacity: 1; }\n.code-cell { padding: 2px 10px; white-space: pre; }\n.comment-box {\n  background: #1e293b;\n  border-left: 3px solid #38bdf8;\n  padding: 6px 12px;\n  margin: 4px 12px;\n  border-radius: 4px;\n  font-family: Inter, sans-serif;\n  font-size: 12px;\n  color: #f8fafc;\n}\n</style>\n</head>\n<body>\n  <div class=\"topbar\">\n    <div class=\"topbar-left\">\n      <span class=\"app-badge\">MCP App 4</span>\n      <span class=\"app-title\">GitHub Commit Diff Reviewer</span>\n      <span style=\"font-size:11px;color:#4ade80;font-weight:600;\">+14</span>\n      <span style=\"font-size:11px;color:#f87171;font-weight:600;\">−4</span>\n    </div>\n    <div class=\"topbar-right\">\n      <button class=\"btn active\" id=\"mode-unified\">Unified</button>\n      <button class=\"btn\" id=\"mode-split\">Split</button>\n      <span class=\"dims-pill\" id=\"dims-badge\">auto</span>\n    </div>\n  </div>\n  <div class=\"file-tabs\" id=\"file-tabs\"></div>\n  <div class=\"diff-scroll\">\n    <table class=\"diff-table\" id=\"diff-table\"></table>\n  </div>\n<script>\n\nlet nextId = 1;\nconst pending = new Map();\nlet hostDims = { width: 0, height: 0 };\nconst toolInputListeners = [];\nconst toolResultListeners = [];\nconst dataUpdateListeners = [];\nconst hostContextListeners = [];\n\nfunction post(message) {\n  window.parent.postMessage(message, '*');\n}\n\nfunction sendRequest(method, params) {\n  const id = nextId++;\n  post({ jsonrpc: '2.0', id, method, params });\n  return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));\n}\n\nfunction sendNotification(method, params = {}) {\n  post({ jsonrpc: '2.0', method, params });\n}\n\nfunction reportSize(height, width) {\n  const params = {};\n  if (typeof height === 'number') params.height = Math.round(height);\n  if (typeof width === 'number') params.width = Math.round(width);\n  sendNotification('ui/notifications/size-changed', params);\n}\n\nfunction updateDimsBadge(dims) {\n  if (!dims) return;\n  if (typeof dims.width === 'number') hostDims.width = Math.round(dims.width);\n  if (typeof dims.height === 'number') hostDims.height = Math.round(dims.height);\n  const el = document.getElementById('dims-badge');\n  if (el && hostDims.width && hostDims.height) {\n    el.textContent = hostDims.width + ' × ' + hostDims.height + ' px';\n  }\n}\n\nwindow.addEventListener('message', (event) => {\n  const msg = event.data;\n  if (!msg || msg.jsonrpc !== '2.0') return;\n  if (msg.method === 'ping' && msg.id !== undefined) {\n    post({ jsonrpc: '2.0', id: msg.id, result: {} });\n    return;\n  }\n  if (msg.id !== undefined && (msg.result !== undefined || msg.error !== undefined)) {\n    const waiter = pending.get(msg.id);\n    if (waiter) {\n      pending.delete(msg.id);\n      if (msg.error) waiter.reject(msg.error);\n      else waiter.resolve(msg.result);\n    }\n    return;\n  }\n  if (msg.method === 'ui/notifications/tool-input') {\n    const args = (msg.params && msg.params.arguments) || {};\n    toolInputListeners.forEach((fn) => fn(args));\n  } else if (msg.method === 'ui/notifications/tool-result') {\n    const res = msg.params || {};\n    toolResultListeners.forEach((fn) => fn(res));\n  } else if (msg.method === 'ui/notifications/data-model-update') {\n    dataUpdateListeners.forEach((fn) => fn(msg.params || {}));\n  } else if (msg.method === 'ui/notifications/host-context-changed') {\n    const ctx = msg.params || {};\n    if (ctx.containerDimensions) updateDimsBadge(ctx.containerDimensions);\n    hostContextListeners.forEach((fn) => fn(ctx));\n  }\n});\n\nasync function bootMcpApp(appName, initialHeight) {\n  const initResult = await sendRequest('ui/initialize', {\n    appInfo: { name: appName, version: '1.0.0' },\n    appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] },\n    protocolVersion: '2026-01-26',\n  });\n  if (initResult && initResult.hostContext && initResult.hostContext.containerDimensions) {\n    updateDimsBadge(initResult.hostContext.containerDimensions);\n  }\n  sendNotification('ui/notifications/initialized', {});\n  if (initialHeight) {\n    reportSize(initialHeight);\n  }\n}\n\n\nconst FILES = [\n  {\n    name: 'mcp_app_bridge.ts',\n    lines: [\n      { oldLn: 205, newLn: 205, type: 'ctx', text: '  bridge.oninitialized = () => {' },\n      { oldLn: 206, newLn: null, type: 'del', text: '    this.sendBoundData();' },\n      { oldLn: null, newLn: 206, type: 'add', text: '    this.initialized = true;' },\n      { oldLn: null, newLn: 207, type: 'add', text: '    this.sendBoundData();' },\n      { oldLn: null, newLn: 208, type: 'add', text: '    this.sendStandardToolNotifications();' },\n      { oldLn: 207, newLn: 209, type: 'ctx', text: '  };' },\n      { oldLn: null, newLn: 210, type: 'add', text: '  bridge.onupdatemodelcontext = async (params) => {' },\n      { oldLn: null, newLn: 211, type: 'add', text: '    this.handleUpdateModelContext(params.structuredContent);' },\n      { oldLn: null, newLn: 212, type: 'add', text: '    return {};' },\n      { oldLn: null, newLn: 213, type: 'add', text: '  };' },\n    ]\n  },\n  {\n    name: 'sandboxed_frame_element.ts',\n    lines: [\n      { oldLn: 174, newLn: 174, type: 'ctx', text: '  override render(): TemplateResult {' },\n      { oldLn: 175, newLn: null, type: 'del', text: '    return html`<iframe src=${this.sandboxUrl}></iframe>`;' },\n      { oldLn: null, newLn: 175, type: 'add', text: '    return html`<iframe src=${this.sandboxUrl}></iframe>' },\n      { oldLn: null, newLn: 176, type: 'add', text: '      <div class=\"a2ui-frame-resize-corner\"></div>`;' },\n      { oldLn: 176, newLn: 177, type: 'ctx', text: '  }' },\n    ]\n  }\n];\n\nlet activeFileIdx = 0;\nlet filterText = '';\nconst comments = { 'mcp_app_bridge.ts:208': 'Bridges A2UI data.paths to standard MCP tool-input & tool-result!' };\n\nfunction renderDiff() {\n  const tabsEl = document.getElementById('file-tabs');\n  tabsEl.textContent = '';\n  FILES.forEach((f, idx) => {\n    const tab = document.createElement('button');\n    tab.className = 'file-tab' + (idx === activeFileIdx ? ' active' : '');\n    tab.textContent = f.name;\n    tab.addEventListener('click', () => { activeFileIdx = idx; renderDiff(); });\n    tabsEl.appendChild(tab);\n  });\n\n  const table = document.getElementById('diff-table');\n  table.textContent = '';\n  const file = FILES[activeFileIdx];\n  const q = filterText.trim().toLowerCase();\n\n  for (const line of file.lines) {\n    if (q && !line.text.toLowerCase().includes(q)) continue;\n    const tr = document.createElement('tr');\n    tr.className = 'diff-row ' + line.type;\n\n    const tdOld = document.createElement('td');\n    tdOld.className = 'ln';\n    tdOld.textContent = line.oldLn ? String(line.oldLn) : '';\n\n    const tdNew = document.createElement('td');\n    tdNew.className = 'ln';\n    tdNew.textContent = line.newLn ? String(line.newLn) : '';\n\n    const tdCode = document.createElement('td');\n    tdCode.className = 'code-cell';\n    const plusBtn = document.createElement('span');\n    plusBtn.className = 'add-comment-btn';\n    plusBtn.textContent = '+';\n    plusBtn.title = 'Add review comment on this line';\n    const lineKey = `${file.name}:${line.newLn || line.oldLn}`;\n    plusBtn.addEventListener('click', () => {\n      const note = `Approved line ${line.newLn || line.oldLn} in ${file.name}`;\n      comments[lineKey] = note;\n      renderDiff();\n      sendNotification('ui/notifications/data-model-change', {\n        key: 'diff',\n        subpath: '/reviewStatus',\n        value: note,\n      });\n      sendRequest('tools/call', {\n        name: 'post_review_comment',\n        arguments: { file: file.name, line: line.newLn || line.oldLn, body: note },\n      });\n    });\n\n    const prefix = line.type === 'add' ? '+ ' : line.type === 'del' ? '- ' : '  ';\n    tdCode.append(plusBtn, document.createTextNode(prefix + line.text));\n    tr.append(tdOld, tdNew, tdCode);\n    table.appendChild(tr);\n\n    if (comments[lineKey]) {\n      const ctr = document.createElement('tr');\n      const ctd = document.createElement('td');\n      ctd.colSpan = 3;\n      const box = document.createElement('div');\n      box.className = 'comment-box';\n      box.textContent = '💬 Reviewer: ' + comments[lineKey];\n      ctd.appendChild(box);\n      ctr.appendChild(ctd);\n      table.appendChild(ctr);\n    }\n  }\n}\n\ntoolInputListeners.push((args) => {\n  const d = args.diff || args;\n  if (d && typeof d.filter === 'string') {\n    filterText = d.filter;\n    renderDiff();\n  }\n});\ndataUpdateListeners.push((params) => {\n  if (params.key === 'diff') {\n    if (!params.subpath && params.value && typeof params.value.filter === 'string') {\n      filterText = params.value.filter;\n      renderDiff();\n    } else if (params.subpath === '/filter') {\n      filterText = String(params.value || '');\n      renderDiff();\n    }\n  }\n});\n\nrenderDiff();\nbootMcpApp('GitHub Commit Diff Reviewer', 280);\n</script>\n</body>\n</html>",
+            "allowedTools": ["post_review_comment"],
+            "data": {
+              "paths": {
+                "diff": "/diff"
+              }
+            }
+          },
+          {
+            "id": "diff_status_text",
+            "component": "Text",
+            "text": {
+              "@call": "formatString",
+              "args": {
+                "value": "Latest inline review action: ${/diff/reviewStatus}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

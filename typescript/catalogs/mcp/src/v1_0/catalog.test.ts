@@ -16,6 +16,13 @@
 
 import toolCallExample from '../../../../../catalogs/mcp/v1/examples/00_inline-tool-call.json' with {type: 'json'};
 import dataBindingExample from '../../../../../catalogs/mcp/v1/examples/01_data-binding.json' with {type: 'json'};
+import scene3dExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-3d-geometry.json' with {type: 'json'};
+import budgetExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-budget-allocator.json' with {type: 'json'};
+import commitDiffExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-commit-diff.json' with {type: 'json'};
+import mermaidExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-mermaid-diagram.json' with {type: 'json'};
+import orderSummaryExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-order-summary.json' with {type: 'json'};
+import pdfViewerExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-pdf-viewer.json' with {type: 'json'};
+import sheetMusicExample from '../../../../../catalogs/mcp/v1/examples/mcp-app-sheet-music.json' with {type: 'json'};
 import {
   isWebComponentImplementation,
   MessageProcessor,
@@ -76,5 +83,30 @@ describe('mcpCatalog', () => {
     expect(surface.componentsModel.get('name_field')?.type).toBe('TextField');
     expect(surface.dataModel.get('/player')).toEqual({name: 'Ada', score: 0});
     surface.dispose();
+  });
+
+  it('processes all showcase examples once composed with the basic catalog', () => {
+    const processor = new MessageProcessor<WebComponentImplementation>([createComposedCatalog()]);
+    const cases = [
+      {
+        example: orderSummaryExample,
+        surfaceId: 'gallery-mcp-app-order-summary',
+        appId: 'order_app',
+      },
+      {example: mermaidExample, surfaceId: 'gallery-mcp-app-mermaid-diagram', appId: 'mermaid_app'},
+      {example: budgetExample, surfaceId: 'gallery-mcp-app-budget-allocator', appId: 'budget_app'},
+      {example: sheetMusicExample, surfaceId: 'gallery-mcp-app-sheet-music', appId: 'music_app'},
+      {example: commitDiffExample, surfaceId: 'gallery-mcp-app-commit-diff', appId: 'diff_app'},
+      {example: scene3dExample, surfaceId: 'gallery-mcp-app-3d-geometry', appId: 'scene3d_app'},
+      {example: pdfViewerExample, surfaceId: 'gallery-mcp-app-pdf-viewer', appId: 'pdf_app'},
+    ];
+
+    for (const {example, surfaceId, appId} of cases) {
+      processor.processMessages(parseExampleMessages(example));
+      const surface = processor.model.getSurface(surfaceId)!;
+      expect(surface).withContext(surfaceId).toBeDefined();
+      expect(surface.componentsModel.get(appId)?.type).withContext(appId).toBe('McpApp');
+      surface.dispose();
+    }
   });
 });

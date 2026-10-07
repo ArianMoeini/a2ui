@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+import {MCP_CATALOG_ID, mcpCatalog} from '@a2ui/catalog-mcp/v1_0';
 import {Catalog} from '@a2ui/web_core/v0_9';
 import {BASIC_FUNCTIONS} from '@a2ui/web_core/v0_9/basic_catalog';
-import {basicCatalog} from '@a2ui/lit/v0_9';
+import {basicCatalog as basicCatalogV10} from '@a2ui/web_core/v1_0';
+import {basicCatalog, type LitComponentApi} from '@a2ui/lit/v0_9';
 import {customSliderComponent} from './custom-slider.js';
 import {customGridComponent} from './custom-grid.js';
 
@@ -29,3 +31,17 @@ export const demoCatalog = new Catalog(
   [...basicCatalog.components.values(), customSliderComponent, customGridComponent],
   BASIC_FUNCTIONS,
 );
+
+/**
+ * Additional v1.0 catalogs registered in the explorer.
+ */
+export function createDemoCatalogs(): Array<Catalog<LitComponentApi>> {
+  const mcpDemoCatalog = new Catalog<LitComponentApi>(
+    MCP_CATALOG_ID,
+    '1.0',
+    [...basicCatalogV10.components.values(), ...mcpCatalog.components.values()],
+    [...basicCatalogV10.functions.values(), ...mcpCatalog.functions.values()],
+    basicCatalogV10.themeSchema,
+  );
+  return [mcpDemoCatalog];
+}

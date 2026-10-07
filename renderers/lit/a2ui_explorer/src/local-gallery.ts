@@ -20,9 +20,10 @@ import {customElement, state} from 'lit/decorators.js';
 import {MessageProcessor, A2uiMessage, A2uiClientAction} from '@a2ui/web_core/v0_9';
 import {Context} from '@a2ui/lit/v0_9';
 import {renderMarkdown} from '@a2ui/markdown-it';
-import {demoCatalog} from './demo-catalog.js';
+import {demoCatalog, createDemoCatalogs} from './demo-catalog.js';
 import {getDemoItems, DemoItem} from './examples';
 import {appStyles} from './local-gallery.css';
+import {observeMcpApps} from './mcp-app-resizer.js';
 
 @customElement('local-gallery')
 export class LocalGallery extends LitElement {
@@ -41,12 +42,25 @@ export class LocalGallery extends LitElement {
   @provide({context: Context.markdown})
   private markdownRenderer = renderMarkdown;
 
-  private processor = new MessageProcessor([demoCatalog], (action: A2uiClientAction) => {
-    this.log(`Action dispatched: ${action.surfaceId}`, action);
-    this.actionLog.push(action);
-  });
+  private processor = new MessageProcessor(
+    [demoCatalog, ...createDemoCatalogs()],
+    (action: A2uiClientAction) => {
+      this.log(`Action dispatched: ${action.surfaceId}`, action);
+      this.actionLog.push(action);
+      if (action.name === 'get_order') {
+        const surface = this.processor.model.getSurface(action.surfaceId);
+        surface?.dataModel.set('/order/toolResult', {
+          items: [
+            {name: 'Mechanical Keyboard', qty: 1, price: 60},
+            {name: 'USB-C Coiled Cable', qty: 2, price: 15},
+          ],
+        });
+      }
+    },
+  );
 
   private dataModelSubscription?: {unsubscribe: () => void};
+  private stopMcpResizeObserver?: () => void;
 
   static override styles = [appStyles];
 
@@ -75,6 +89,7 @@ export class LocalGallery extends LitElement {
     this.isRightSidebarCollapsed = this.getLocalStorage('isRightSidebarCollapsed') === 'true';
 
     window.addEventListener('keydown', this.handleKeyDown);
+    this.stopMcpResizeObserver = observeMcpApps(() => this.renderRoot);
 
     this.processor.model.onSurfaceCreated.subscribe(surface => {
       surface.onError.subscribe((err: {message?: string}) => {
@@ -88,6 +103,8 @@ export class LocalGallery extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('keydown', this.handleKeyDown);
+    this.stopMcpResizeObserver?.();
+    this.stopMcpResizeObserver = undefined;
   }
 
   private handleKeyDown = (event: KeyboardEvent) => {
@@ -250,7 +267,7 @@ export class LocalGallery extends LitElement {
    */
   private applyPrimaryColorToMessages(messages: A2uiMessage[]): A2uiMessage[] {
     return messages.map(msg => {
-      if ('createSurface' in msg && this.primaryColor) {
+      if (msg.version === 'v0.9' && 'createSurface' in msg && this.primaryColor) {
         return {
           ...msg,
           createSurface: {

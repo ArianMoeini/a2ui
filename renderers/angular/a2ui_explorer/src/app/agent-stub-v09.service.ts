@@ -107,6 +107,14 @@ export class AgentStubV09Service extends AgentStubService {
             },
           },
         ]);
+      } else if (name === 'get_order') {
+        const surface = this.rendererService.surfaceGroup?.getSurface(action.surfaceId);
+        surface?.dataModel.set('/order/toolResult', {
+          items: [
+            {name: 'Mechanical Keyboard', qty: 1, price: 60},
+            {name: 'USB-C Coiled Cable', qty: 2, price: 15},
+          ],
+        });
       }
     }, 50);
   }
