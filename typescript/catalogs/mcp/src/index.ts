@@ -77,6 +77,9 @@ export {
   A2UI_MIME_TYPE,
   CallMcpToolApi,
   createCallMcpToolImplementation,
+  MCP_APP_MIME_TYPE,
+  type CallMcpToolOptions,
+  type McpAppResourcePayload,
   type McpClientResolver,
   type McpToolClient,
 } from './functions/callMcpTool.js';
