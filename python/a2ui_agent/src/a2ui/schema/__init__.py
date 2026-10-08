@@ -13,12 +13,7 @@
 # limitations under the License.
 
 from . import constants as constants
-from .catalog import CatalogConfig, load_examples
-from .catalog_provider import (
-    A2uiCatalogProvider,
-    FileSystemCatalogProvider,
-    InMemoryCatalogProvider,
-)
+from .catalog import load_examples, resolve_examples_path
 from .constants import (
     A2UI_CLIENT_CAPABILITIES_KEY,
     A2UI_CLOSE_TAG,
@@ -35,16 +30,13 @@ __all__ = [
     "A2UI_CLIENT_CAPABILITIES_KEY",
     "A2UI_CLOSE_TAG",
     "A2UI_OPEN_TAG",
-    "A2uiCatalogProvider",
     "CATALOG_COMPONENTS_KEY",
     "CATALOG_ID_KEY",
-    "CatalogConfig",
-    "FileSystemCatalogProvider",
-    "InMemoryCatalogProvider",
     "VERSION_0_8",
     "VERSION_0_9",
     "VERSION_0_9_1",
     "VERSION_1_0",
     "constants",
     "load_examples",
+    "resolve_examples_path",
 ]
