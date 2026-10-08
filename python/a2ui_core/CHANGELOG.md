@@ -1,5 +1,8 @@
 ## Unreleased
 
+- **BREAKING**: `a2ui.core.schema.AgentToRendererMessage`,
+  `RendererToAgentMessage`, and their legacy aliases now expose the full
+  v0.8–v1.0 union instead of being overwritten by v0.9 re-exports (#3064).
 - `inline_local_refs` is exported from `a2ui.core`. It writes a schema's local
   `#/` references inline, keeping references to common types, as
   `Catalog.from_json` does
